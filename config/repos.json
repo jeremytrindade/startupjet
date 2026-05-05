@@ -1,0 +1,11 @@
+{
+  "_about": "List of repos to clone during phase 5. Set required=true to fail if 404. Otherwise 404 is silently skipped.",
+  "repos": [
+    { "owner": "jeremytrindade", "name": "playbook",                     "required": true,  "description": "cross-PC rules, procedures, scripts" },
+    { "owner": "jeremytrindade", "name": "ai-journal",                   "required": true,  "description": "cross-AI cross-machine journal" },
+    { "owner": "jeremytrindade", "name": "rpi5-usages",                  "required": false, "description": "RPi5 community usage research" },
+    { "owner": "jeremytrindade", "name": "labs-migration-gcp-to-rpi",    "required": false, "description": "labs migration runbook (private)" },
+    { "owner": "jeremytrindade", "name": "machines-cheatsheet",          "required": false, "description": "PowerShell cheatsheet for SSH" },
+    { "owner": "jeremytrindade", "name": "remote-claude-code",           "required": false, "description": "PowerShell remote via Cloudflare Tunnel" }
+  ]
+}

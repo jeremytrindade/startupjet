@@ -1,0 +1,345 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>startupjet, one-click fresh-PC bootstrap</title>
+  <style>
+    :root {
+      --bg: #0f1117;
+      --surface: #1a1d27;
+      --surface2: #23273a;
+      --border: #2e3347;
+      --accent: #2dd4bf;
+      --accent2: #5eead4;
+      --text: #e8eaf6;
+      --muted: #8c92a4;
+      --code-bg: #0a0c12;
+      --green: #43a047;
+      --orange: #f57c00;
+      --red: #ef5350;
+    }
+    [data-theme="light"] {
+      --bg: #f5f7fa;
+      --surface: #ffffff;
+      --surface2: #eef1f6;
+      --border: #d1d5db;
+      --accent: #0d9488;
+      --accent2: #0f766e;
+      --text: #1e293b;
+      --muted: #64748b;
+      --code-bg: #f1f5f9;
+      --green: #16a34a;
+      --orange: #ea580c;
+      --red: #dc2626;
+    }
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      background: var(--bg);
+      color: var(--text);
+      font-family: 'Segoe UI', system-ui, -apple-system, sans-serif;
+      line-height: 1.65;
+    }
+    a { color: var(--accent2); text-decoration: none; }
+    a:hover { text-decoration: underline; }
+
+    /* Theme toggle */
+    .theme-toggle {
+      position: fixed;
+      top: 16px;
+      right: 16px;
+      z-index: 100;
+      background: var(--surface);
+      border: 1px solid var(--border);
+      color: var(--text);
+      padding: 6px 14px;
+      border-radius: 6px;
+      font-size: 13px;
+      font-family: inherit;
+      cursor: pointer;
+    }
+    .theme-toggle:hover { border-color: var(--accent); }
+
+    /* Hero */
+    .hero {
+      background: linear-gradient(135deg, #042f2e 0%, var(--bg) 50%, #0f1117 100%);
+      border-bottom: 1px solid var(--border);
+      padding: 64px 24px 48px;
+      text-align: center;
+    }
+    [data-theme="light"] .hero {
+      background: linear-gradient(135deg, #ccfbf1 0%, var(--bg) 50%, #f0fdfa 100%);
+    }
+    .hero h1 {
+      font-size: clamp(32px, 5vw, 52px);
+      font-weight: 800;
+      margin-bottom: 12px;
+      letter-spacing: -1px;
+    }
+    .hero h1 span { color: var(--accent); }
+    .hero .tagline {
+      color: var(--muted);
+      font-size: 18px;
+      max-width: 600px;
+      margin: 0 auto 24px;
+    }
+    .hero .badges {
+      display: flex;
+      gap: 8px;
+      justify-content: center;
+      flex-wrap: wrap;
+      margin-bottom: 16px;
+    }
+    .hero .badge {
+      background: var(--surface2);
+      border: 1px solid var(--border);
+      border-radius: 20px;
+      padding: 4px 14px;
+      font-size: 12px;
+      color: var(--muted);
+    }
+    .hero .badge.mit { border-color: var(--green); color: var(--green); }
+    .hero .links { font-size: 14px; }
+    .hero .links a { margin: 0 10px; }
+
+    /* Container */
+    .container { max-width: 960px; margin: 0 auto; padding: 0 24px; }
+    section { padding: 40px 0 24px; }
+    h2 {
+      font-size: 22px;
+      font-weight: 700;
+      margin-bottom: 20px;
+      padding-bottom: 8px;
+      border-bottom: 2px solid var(--border);
+    }
+
+    /* Phase cards */
+    .phases {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+      gap: 16px;
+      margin-bottom: 24px;
+    }
+    .phase-card {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      padding: 20px;
+      transition: transform 0.15s, border-color 0.15s;
+    }
+    .phase-card:hover { transform: translateY(-2px); border-color: var(--accent); }
+    .phase-num {
+      display: inline-block;
+      background: var(--accent);
+      color: #000;
+      font-weight: 800;
+      font-size: 12px;
+      width: 28px;
+      height: 28px;
+      line-height: 28px;
+      text-align: center;
+      border-radius: 50%;
+      margin-bottom: 10px;
+    }
+    .phase-card h3 { font-size: 16px; font-weight: 700; margin-bottom: 8px; }
+    .phase-card p { font-size: 14px; color: var(--muted); }
+
+    /* Quick start */
+    .steps { counter-reset: step; }
+    .step {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 16px 20px 16px 56px;
+      margin-bottom: 12px;
+      position: relative;
+    }
+    .step::before {
+      counter-increment: step;
+      content: counter(step);
+      position: absolute;
+      left: 16px;
+      top: 16px;
+      background: var(--accent);
+      color: #000;
+      font-weight: 800;
+      font-size: 13px;
+      width: 26px;
+      height: 26px;
+      line-height: 26px;
+      text-align: center;
+      border-radius: 50%;
+    }
+    .step p { margin: 0; font-size: 15px; }
+
+    /* Code block */
+    pre {
+      background: var(--code-bg);
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      padding: 14px 16px;
+      font-family: 'Consolas', 'Fira Code', monospace;
+      font-size: 13px;
+      color: var(--text);
+      overflow-x: auto;
+      line-height: 1.5;
+      margin: 12px 0;
+    }
+    code {
+      font-family: 'Consolas', 'Fira Code', monospace;
+      font-size: 13px;
+      background: var(--surface2);
+      padding: 2px 6px;
+      border-radius: 4px;
+    }
+
+    /* Customize section */
+    .config-list {
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+    }
+    .config-item {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-left: 4px solid var(--accent);
+      border-radius: 8px;
+      padding: 14px 18px;
+    }
+    .config-item strong { color: var(--accent2); }
+    .config-item p { font-size: 14px; color: var(--muted); margin-top: 4px; }
+
+    footer {
+      border-top: 1px solid var(--border);
+      padding: 24px;
+      text-align: center;
+      color: var(--muted);
+      font-size: 13px;
+      margin-top: 36px;
+    }
+  </style>
+</head>
+<body>
+  <button class="theme-toggle" id="theme-toggle">Light</button>
+
+  <header class="hero">
+    <h1>startup<span>jet</span></h1>
+    <p class="tagline">One click. Fresh PC to fully configured developer workstation.</p>
+    <div class="badges">
+      <span class="badge mit">MIT</span>
+      <span class="badge">Windows 10/11</span>
+      <span class="badge">PowerShell</span>
+      <span class="badge">winget</span>
+    </div>
+    <div class="links">
+      <a href="https://github.com/jeremytrindade/startupjet">GitHub</a>
+      <a href="README.md">README</a>
+      <a href="LICENSE">License</a>
+    </div>
+  </header>
+
+  <div class="container">
+    <section>
+      <h2>What it does</h2>
+      <div class="phases">
+        <div class="phase-card">
+          <div class="phase-num">1</div>
+          <h3>Detect</h3>
+          <p>Scans for git, gh, Python, PowerShell 7, OpenSSH, Tailscale, cloudflared, Node.js. Reports what is installed vs missing.</p>
+        </div>
+        <div class="phase-card">
+          <div class="phase-num">2</div>
+          <h3>Install</h3>
+          <p>Installs missing tools via winget with a single confirmation. Handles tools without winget packages gracefully.</p>
+        </div>
+        <div class="phase-card">
+          <div class="phase-num">3</div>
+          <h3>Authenticate</h3>
+          <p>Interactive login for GitHub CLI, Tailscale, and Cloudflare. Browser-based flows, nothing stored in plain text.</p>
+        </div>
+        <div class="phase-card">
+          <div class="phase-num">4</div>
+          <h3>Configure</h3>
+          <p>Sets workspace path, GitHub username, git email. Saves to a local config file (gitignored, never pushed).</p>
+        </div>
+        <div class="phase-card">
+          <div class="phase-num">5</div>
+          <h3>Clone repos</h3>
+          <p>Reads <code>config/repos.json</code> and clones each repo. Private repos that 404 are skipped with a warning.</p>
+        </div>
+        <div class="phase-card">
+          <div class="phase-num">6</div>
+          <h3>Verify</h3>
+          <p>Smoke test: writes + deletes a temp file in ai-journal, confirms git and gh are working. Prints the canonical AI prompt.</p>
+        </div>
+      </div>
+    </section>
+
+    <section>
+      <h2>Quick start</h2>
+      <div class="steps">
+        <div class="step"><p>Download this repo as ZIP, or run <code>gh repo clone jeremytrindade/startupjet</code></p></div>
+        <div class="step"><p>Extract anywhere on your new PC.</p></div>
+        <div class="step"><p>Double-click <code>startupjet.bat</code> and follow the prompts.</p></div>
+      </div>
+    </section>
+
+    <section>
+      <h2>Customize for your own setup</h2>
+      <p style="color: var(--muted); margin-bottom: 16px;">Fork this repo and edit these config files:</p>
+      <div class="config-list">
+        <div class="config-item">
+          <strong>config/prerequisites.json</strong>
+          <p>Add or remove tools to detect and install.</p>
+        </div>
+        <div class="config-item">
+          <strong>config/repos.json</strong>
+          <p>Set your own list of repos to clone. Mark required repos to fail on 404.</p>
+        </div>
+        <div class="config-item">
+          <strong>config/defaults.json</strong>
+          <p>Change the default workspace path and folder name.</p>
+        </div>
+      </div>
+    </section>
+
+    <section>
+      <h2>How it works</h2>
+      <p><code>startupjet.bat</code> is the entry point. It calls <code>startupjet.ps1</code> with <code>-ExecutionPolicy Bypass</code> so PowerShell does not block unsigned scripts. The PowerShell script is a single-file orchestrator that runs all 6 phases sequentially.</p>
+      <pre>startupjet.bat
+  -> powershell -ExecutionPolicy Bypass -File startupjet.ps1
+    -> Phase 1: Detect
+    -> Phase 2: Install (winget)
+    -> Phase 3: Authenticate (gh, tailscale, cloudflared)
+    -> Phase 4: Configure (workspace path, git identity)
+    -> Phase 5: Clone repos (from config/repos.json)
+    -> Phase 6: Verify (smoke test + summary)</pre>
+    </section>
+  </div>
+
+  <footer>
+    <p>startupjet v1.0 (2026-05-05). MIT License.</p>
+    <p style="margin-top: 6px;">Built by <strong>Jeremy Trindade</strong> · <a href="https://github.com/jeremytrindade/startupjet">GitHub</a></p>
+  </footer>
+
+  <script>
+    const toggle = document.getElementById('theme-toggle');
+    const saved = localStorage.getItem('startupjet-theme');
+    if (saved) {
+      document.documentElement.setAttribute('data-theme', saved);
+      toggle.textContent = saved === 'light' ? 'Dark' : 'Light';
+    } else if (window.matchMedia && window.matchMedia('(prefers-color-scheme: light)').matches) {
+      document.documentElement.setAttribute('data-theme', 'light');
+      toggle.textContent = 'Dark';
+    }
+    toggle.addEventListener('click', function() {
+      const current = document.documentElement.getAttribute('data-theme');
+      const next = current === 'light' ? 'dark' : 'light';
+      document.documentElement.setAttribute('data-theme', next === 'dark' ? '' : next);
+      if (next === 'dark') document.documentElement.removeAttribute('data-theme');
+      localStorage.setItem('startupjet-theme', next);
+      toggle.textContent = next === 'light' ? 'Dark' : 'Light';
+    });
+  </script>
+</body>
+</html>
