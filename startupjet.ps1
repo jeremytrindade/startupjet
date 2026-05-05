@@ -35,6 +35,7 @@ $prerequisites = @(
   @{ name = "Tailscale";    cmd = "tailscale";  wingetId = "tailscale.tailscale" }
   @{ name = "cloudflared";  cmd = "cloudflared";wingetId = "Cloudflare.cloudflared" }
   @{ name = "Node.js";      cmd = "node";       wingetId = "OpenJS.NodeJS" }
+  @{ name = "VS Code";      cmd = "code";       wingetId = "Microsoft.VisualStudioCode" }
 )
 
 $missing = @()
@@ -83,6 +84,43 @@ if ($missing.Count -gt 0) {
   }
 } else {
   Write-Phase "PHASE 2, install (skipped, nothing missing)"
+}
+
+# === Phase 2b: AI coding assistants ===
+Write-Phase "PHASE 2b, AI coding assistants"
+
+$aiTools = @(
+  @{ name = "Claude Code";  cmd = "claude"; pkg = "@anthropic-ai/claude-code" }
+  @{ name = "OpenAI Codex"; cmd = "codex";  pkg = "@openai/codex" }
+)
+
+$npmAvailable = Test-Command "npm"
+if (-not $npmAvailable) {
+  Write-Host "  npm not available. AI coding assistants require Node.js + npm." -ForegroundColor Yellow
+  Write-Host "  Install Node.js first, then re-run startupjet." -ForegroundColor Yellow
+} else {
+  foreach ($ai in $aiTools) {
+    if (Test-Command $ai.cmd) {
+      Write-Host ("  [OK] " + $ai.name + " already installed") -ForegroundColor Green
+      $script:summary.alreadyHad += $ai.name
+    } else {
+      $reply = Read-Host ("  Install " + $ai.name + "? [y/N]")
+      if ($reply -eq "y" -or $reply -eq "Y") {
+        Write-Host ("  Installing " + $ai.name + " via npm...")
+        npm install -g $ai.pkg 2>&1 | Out-Null
+        $env:Path = [System.Environment]::GetEnvironmentVariable("Path", "Machine") + ";" + [System.Environment]::GetEnvironmentVariable("Path", "User")
+        if (Test-Command $ai.cmd) {
+          Write-Host ("  [OK] " + $ai.name + " installed") -ForegroundColor Green
+          $script:summary.installed += $ai.name
+        } else {
+          Write-Host ("  [!!] " + $ai.name + " installed but not yet on PATH. Restart terminal after setup.") -ForegroundColor Yellow
+          $script:summary.installed += $ai.name
+        }
+      } else {
+        Write-Host ("  [skip] " + $ai.name) -ForegroundColor Yellow
+      }
+    }
+  }
 }
 
 # === Phase 3: Authenticate ===
