@@ -1,3 +1,5 @@
 config/user-config.json
+config/progress.json
 debug-testing/
+startupjet-*.log
 *.tmp

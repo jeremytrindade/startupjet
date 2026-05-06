@@ -1,0 +1,11 @@
+{
+  "_about": "VS Code extensions to auto-install. Edit this list for your own setup.",
+  "extensions": [
+    "ms-python.python",
+    "ms-vscode.powershell",
+    "dbaeumer.vscode-eslint",
+    "esbenp.prettier-vscode",
+    "ms-vscode-remote.remote-ssh",
+    "eamodio.gitlens"
+  ]
+}

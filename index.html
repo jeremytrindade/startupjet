@@ -209,6 +209,22 @@
     .config-item strong { color: var(--accent2); }
     .config-item p { font-size: 14px; color: var(--muted); margin-top: 4px; }
 
+    /* Features grid */
+    .features {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+      gap: 12px;
+      margin-bottom: 16px;
+    }
+    .feature {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 14px 16px;
+    }
+    .feature strong { font-size: 14px; }
+    .feature p { font-size: 13px; color: var(--muted); margin-top: 4px; }
+
     footer {
       border-top: 1px solid var(--border);
       padding: 24px;
@@ -245,12 +261,12 @@
         <div class="phase-card">
           <div class="phase-num">1</div>
           <h3>Scan</h3>
-          <p>Silently scans for 16 tools across dev, network, AI coding, and local AI categories. Reports what is installed vs missing.</p>
+          <p>Silently scans for 19 tools across dev, network, AI coding, and local AI categories. Reports what is installed vs missing.</p>
         </div>
         <div class="phase-card">
           <div class="phase-num">2</div>
           <h3>Choose</h3>
-          <p>All questions upfront: install all, all except local AI, or customize per-tool. Plus auth choices and workspace config. After this, no more questions.</p>
+          <p>All questions upfront: install mode, install scope (user or all), auth, SSH key, dev settings, VS Code extensions, workspace config. After this, no more questions.</p>
         </div>
         <div class="phase-card">
           <div class="phase-num">3</div>
@@ -260,12 +276,12 @@
         <div class="phase-card">
           <div class="phase-num">4</div>
           <h3>Configure</h3>
-          <p>Sets git identity and saves workspace config. If git was just installed, configures it automatically.</p>
+          <p>Sets git identity, generates SSH key (adds to GitHub), applies Windows dev settings, saves workspace config.</p>
         </div>
         <div class="phase-card">
           <div class="phase-num">5</div>
           <h3>Install</h3>
-          <p>Fully unattended. Installs via winget, npm, and ollama pull in order. Progress counter for each tool.</p>
+          <p>Fully unattended. Installs via winget, npm, and ollama pull. Progress saved after each item for resume on failure. Plus VS Code extensions.</p>
         </div>
         <div class="phase-card">
           <div class="phase-num">6</div>
@@ -292,16 +308,58 @@
     </section>
 
     <section>
+      <h2>v1.2 features</h2>
+      <div class="features">
+        <div class="feature">
+          <strong>Install scope</strong>
+          <p>Current user only or all users on the PC (winget --scope user vs machine).</p>
+        </div>
+        <div class="feature">
+          <strong>Log file</strong>
+          <p>All output saved to <code>startupjet-YYYY-MM-DD.log</code> automatically.</p>
+        </div>
+        <div class="feature">
+          <strong>SSH key</strong>
+          <p>Generates ed25519 key and adds it to GitHub via <code>gh ssh-key add</code>.</p>
+        </div>
+        <div class="feature">
+          <strong>Resume on failure</strong>
+          <p>Progress saved after each install. Re-run to pick up where it left off.</p>
+        </div>
+        <div class="feature">
+          <strong>VS Code extensions</strong>
+          <p>Auto-installs extensions from <code>config/vscode-extensions.json</code>.</p>
+        </div>
+        <div class="feature">
+          <strong>Windows dev settings</strong>
+          <p>Show file extensions, hidden files, enable Developer Mode.</p>
+        </div>
+        <div class="feature">
+          <strong>Hardware detection</strong>
+          <p>GPU (nvidia-smi/WMI), RAM, disk. Clear verdict for local AI capability.</p>
+        </div>
+        <div class="feature">
+          <strong>Speed test</strong>
+          <p>Measures download speed via Cloudflare CDN for accurate time estimates.</p>
+        </div>
+        <div class="feature">
+          <strong>Update mode</strong>
+          <p><code>startupjet.bat -Update</code> upgrades all installed tools to latest.</p>
+        </div>
+      </div>
+    </section>
+
+    <section>
       <h2>Customize for your own setup</h2>
       <p style="color: var(--muted); margin-bottom: 16px;">Fork this repo and edit these config files:</p>
       <div class="config-list">
         <div class="config-item">
-          <strong>config/prerequisites.json</strong>
-          <p>Add or remove tools to detect and install.</p>
-        </div>
-        <div class="config-item">
           <strong>config/repos.json</strong>
           <p>Set your own list of repos to clone. Mark required repos to fail on 404.</p>
+        </div>
+        <div class="config-item">
+          <strong>config/vscode-extensions.json</strong>
+          <p>Set your own VS Code extensions to auto-install.</p>
         </div>
         <div class="config-item">
           <strong>config/defaults.json</strong>
@@ -313,21 +371,26 @@
     <section>
       <h2>How it works</h2>
       <p><code>startupjet.bat</code> calls <code>startupjet.ps1</code> with <code>-ExecutionPolicy Bypass</code>. The script asks all questions in Phase 2, then runs everything else unattended.</p>
-      <pre>startupjet.bat
+      <pre>startupjet.bat [-Update]
   -> powershell -ExecutionPolicy Bypass -File startupjet.ps1
-    -> Phase 1: Scan (silent detection of 16 tools)
+    -> Phase 1: Scan (hardware + speed test + 19 tools)
     -> Phase 2: Choose (all questions upfront)
     -> Phase 3: Authenticate (gh, tailscale, cloudflared)
-    -> Phase 4: Configure (git identity, save config)
+    -> Phase 4: Configure (git, SSH key, dev settings)
     ---- no more user input after this ----
-    -> Phase 5: Install (winget + npm + ollama pull)
+    -> Phase 5: Install (winget + npm + ollama + extensions)
     -> Phase 6: Clone repos (from config/repos.json)
-    -> Phase 7: Verify (PATH check + smoke test + timing)</pre>
+    -> Phase 7: Verify (PATH check + smoke test + timing)
+
+  Update mode: startupjet.bat -Update
+    -> Scans installed tools
+    -> Runs winget upgrade + npm update + ollama pull
+    -> No questions asked</pre>
     </section>
   </div>
 
   <footer>
-    <p>startupjet v1.1 (2026-05-06). MIT License.</p>
+    <p>startupjet v1.2 (2026-05-06). MIT License.</p>
     <p style="margin-top: 6px;">Built by <strong>Jeremy Trindade</strong> · <a href="https://github.com/jeremytrindade/startupjet">GitHub</a></p>
   </footer>
 

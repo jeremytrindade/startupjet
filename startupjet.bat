@@ -1,6 +1,8 @@
 @echo off
 REM startupjet entry point. Runs the PowerShell orchestrator with execution policy bypass.
-REM Usage: double-click this file, or run from cmd / PowerShell.
+REM Usage:
+REM   startupjet.bat              Normal install
+REM   startupjet.bat -Update      Upgrade installed tools
 
 cd /d "%~dp0"
 echo.
@@ -17,7 +19,7 @@ if errorlevel 1 (
   exit /b 1
 )
 
-powershell -ExecutionPolicy Bypass -NoProfile -File "%~dp0startupjet.ps1"
+powershell -ExecutionPolicy Bypass -NoProfile -File "%~dp0startupjet.ps1" %*
 echo.
-echo Done. Check the log above for any warnings.
+echo Done. Check the log file for details.
 pause
