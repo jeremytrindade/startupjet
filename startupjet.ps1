@@ -47,6 +47,9 @@ function Refresh-SessionPath {
     "$env:LOCALAPPDATA\Programs\Python\Python312\Scripts"
     "$env:LOCALAPPDATA\Programs\Python\Python311"
     "$env:LOCALAPPDATA\Programs\Python\Python311\Scripts"
+    "$env:LOCALAPPDATA\Programs\Ollama"
+    "$env:USERPROFILE\.local\bin"
+    "$env:USERPROFILE\.cargo\bin"
   )
   foreach ($p in $extraPaths) {
     if ((Test-Path $p) -and ($env:Path -notlike "*$p*")) {
@@ -152,6 +155,50 @@ if (-not $npmAvailable) {
       }
     }
   }
+}
+
+# === Phase 2c: Project-specific dependencies ===
+Write-Phase "PHASE 2c, project-specific dependencies"
+
+Write-Host "  local-llm-council-pc (local AI council on GPU)" -ForegroundColor White
+Write-Host "    Requires: Ollama (LLM runtime), uv (Python pkg manager), Python >= 3.11" -ForegroundColor Cyan
+Write-Host "    Also downloads 3 models (~14GB): llama3.1:8b, qwen2.5:7b, mistral:7b" -ForegroundColor Cyan
+Write-Host ""
+
+$reply = Read-Host "  Install local-llm-council-pc dependencies? [y/N]"
+if ($reply -eq "y" -or $reply -eq "Y") {
+  $projectDeps = @(
+    @{ name = "Ollama";  cmd = "ollama"; wingetId = "Ollama.Ollama" }
+    @{ name = "uv";      cmd = "uv";    wingetId = "astral-sh.uv" }
+  )
+
+  if (-not (Test-Command "winget")) {
+    Write-Host "  winget not found, cannot auto-install." -ForegroundColor Red
+  } else {
+    foreach ($dep in $projectDeps) {
+      if (Test-Command $dep.cmd) {
+        Write-Host ("  [OK] " + $dep.name + " already installed") -ForegroundColor Green
+        $script:summary.alreadyHad += $dep.name
+      } else {
+        Write-Host ("  Installing " + $dep.name + "...")
+        winget install --id $dep.wingetId --silent --accept-source-agreements --accept-package-agreements 2>&1 | Out-Null
+        Refresh-SessionPath
+        if (Test-Command $dep.cmd) {
+          Write-Host ("  [OK] " + $dep.name + " installed") -ForegroundColor Green
+          $script:summary.installed += $dep.name
+        } else {
+          Write-Host ("  [!!] " + $dep.name + " installed but not yet on PATH. Restart terminal after setup.") -ForegroundColor Yellow
+          $script:summary.installed += $dep.name
+        }
+      }
+    }
+  }
+
+  Write-Host ""
+  Write-Host "  Note: the 3 AI models (~14GB) are downloaded by the project's own setup.bat." -ForegroundColor Cyan
+  Write-Host "  After startupjet finishes, run: D:\claudeui\github\local-llm-council-pc\setup.bat" -ForegroundColor White
+} else {
+  Write-Host "  [skip] local-llm-council-pc dependencies" -ForegroundColor Yellow
 }
 
 # === Phase 3: Authenticate ===
@@ -280,6 +327,8 @@ $allTools = @(
   @{ name = "cloudflared";  cmd = "cloudflared";versionFlag = "--version" }
   @{ name = "Claude Code";  cmd = "claude";     versionFlag = "--version" }
   @{ name = "OpenAI Codex"; cmd = "codex";      versionFlag = "--version" }
+  @{ name = "Ollama";       cmd = "ollama";     versionFlag = "--version" }
+  @{ name = "uv";           cmd = "uv";         versionFlag = "--version" }
 )
 
 $notOnPath = @()

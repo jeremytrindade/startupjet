@@ -9,11 +9,12 @@ On a fresh Windows PC, in 5 to 10 minutes:
 1. Detects missing tools (git, gh, Python, PowerShell 7, OpenSSH, Tailscale, cloudflared, Node.js, VS Code).
 2. Installs them via winget.
 3. Asks which AI coding assistant(s) to install (Claude Code, OpenAI Codex, or both) via npm.
-4. Authenticates GitHub, Tailscale, Cloudflare interactively.
-5. Asks where to put your workspace folder.
-6. Clones a configured list of repos (skipping private ones you do not have access to).
-7. Verifies everything works with a smoke test.
-8. Tells you the canonical AI prompt to use for journaling future work.
+4. Offers project-specific dependencies (e.g. Ollama + uv for local-llm-council-pc).
+5. Authenticates GitHub, Tailscale, Cloudflare interactively.
+6. Asks where to put your workspace folder.
+7. Clones a configured list of repos (skipping private ones you do not have access to).
+8. Verifies everything works with a smoke test.
+9. Tells you the canonical AI prompt to use for journaling future work.
 
 ## Quick start
 
