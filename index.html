@@ -224,7 +224,7 @@
 
   <header class="hero">
     <h1>startup<span>jet</span></h1>
-    <p class="tagline">One click. Fresh PC to fully configured developer workstation.</p>
+    <p class="tagline">Answer a few questions, walk away, come back to a fully configured PC.</p>
     <div class="badges">
       <span class="badge mit">MIT</span>
       <span class="badge">Windows 10/11</span>
@@ -244,43 +244,38 @@
       <div class="phases">
         <div class="phase-card">
           <div class="phase-num">1</div>
-          <h3>Detect</h3>
-          <p>Scans for git, gh, Python, PowerShell 7, OpenSSH, Tailscale, cloudflared, Node.js, VS Code. Reports what is installed vs missing.</p>
+          <h3>Scan</h3>
+          <p>Silently scans for 16 tools across dev, network, AI coding, and local AI categories. Reports what is installed vs missing.</p>
         </div>
         <div class="phase-card">
           <div class="phase-num">2</div>
-          <h3>Install</h3>
-          <p>Installs missing tools via winget with a single confirmation. Handles tools without winget packages gracefully.</p>
-        </div>
-        <div class="phase-card">
-          <div class="phase-num">2b</div>
-          <h3>AI coding assistants</h3>
-          <p>Asks which AI coding tool(s) to install via npm: Claude Code, OpenAI Codex, both, or none. Requires Node.js.</p>
-        </div>
-        <div class="phase-card">
-          <div class="phase-num">2c</div>
-          <h3>Project dependencies</h3>
-          <p>Offers to install project-specific tools. Currently: Ollama (local LLM runtime) + uv (Python package manager) for local-llm-council-pc.</p>
+          <h3>Choose</h3>
+          <p>All questions upfront: install all, all except local AI, or customize per-tool. Plus auth choices and workspace config. After this, no more questions.</p>
         </div>
         <div class="phase-card">
           <div class="phase-num">3</div>
           <h3>Authenticate</h3>
-          <p>Interactive login for GitHub CLI, Tailscale, and Cloudflare. Browser-based flows, nothing stored in plain text.</p>
+          <p>Interactive login for GitHub CLI, Tailscale, Cloudflare. Done early so the rest runs unattended.</p>
         </div>
         <div class="phase-card">
           <div class="phase-num">4</div>
           <h3>Configure</h3>
-          <p>Sets workspace path, GitHub username, git email. Saves to a local config file (gitignored, never pushed).</p>
+          <p>Sets git identity and saves workspace config. If git was just installed, configures it automatically.</p>
         </div>
         <div class="phase-card">
           <div class="phase-num">5</div>
+          <h3>Install</h3>
+          <p>Fully unattended. Installs via winget, npm, and ollama pull in order. Progress counter for each tool.</p>
+        </div>
+        <div class="phase-card">
+          <div class="phase-num">6</div>
           <h3>Clone repos</h3>
           <p>Reads <code>config/repos.json</code> and clones each repo. Private repos that 404 are skipped with a warning.</p>
         </div>
         <div class="phase-card">
-          <div class="phase-num">6</div>
+          <div class="phase-num">7</div>
           <h3>Verify</h3>
-          <p>Smoke test: writes + deletes a temp file in ai-journal, confirms git and gh are working. Prints the canonical AI prompt.</p>
+          <p>Checks every tool is on PATH with version output. Smoke test on ai-journal. Reports total elapsed time.</p>
         </div>
       </div>
     </section>
@@ -290,7 +285,9 @@
       <div class="steps">
         <div class="step"><p>Download this repo as ZIP, or run <code>gh repo clone jeremytrindade/startupjet</code></p></div>
         <div class="step"><p>Extract anywhere on your new PC.</p></div>
-        <div class="step"><p>Double-click <code>startupjet.bat</code> and follow the prompts.</p></div>
+        <div class="step"><p>Double-click <code>startupjet.bat</code>.</p></div>
+        <div class="step"><p>Answer the setup questions (~2 min): what to install, auth, workspace path.</p></div>
+        <div class="step"><p>Walk away. Come back to a fully configured PC.</p></div>
       </div>
     </section>
 
@@ -315,20 +312,22 @@
 
     <section>
       <h2>How it works</h2>
-      <p><code>startupjet.bat</code> is the entry point. It calls <code>startupjet.ps1</code> with <code>-ExecutionPolicy Bypass</code> so PowerShell does not block unsigned scripts. The PowerShell script is a single-file orchestrator that runs all 6 phases sequentially.</p>
+      <p><code>startupjet.bat</code> calls <code>startupjet.ps1</code> with <code>-ExecutionPolicy Bypass</code>. The script asks all questions in Phase 2, then runs everything else unattended.</p>
       <pre>startupjet.bat
   -> powershell -ExecutionPolicy Bypass -File startupjet.ps1
-    -> Phase 1: Detect
-    -> Phase 2: Install (winget)
+    -> Phase 1: Scan (silent detection of 16 tools)
+    -> Phase 2: Choose (all questions upfront)
     -> Phase 3: Authenticate (gh, tailscale, cloudflared)
-    -> Phase 4: Configure (workspace path, git identity)
-    -> Phase 5: Clone repos (from config/repos.json)
-    -> Phase 6: Verify (smoke test + summary)</pre>
+    -> Phase 4: Configure (git identity, save config)
+    ---- no more user input after this ----
+    -> Phase 5: Install (winget + npm + ollama pull)
+    -> Phase 6: Clone repos (from config/repos.json)
+    -> Phase 7: Verify (PATH check + smoke test + timing)</pre>
     </section>
   </div>
 
   <footer>
-    <p>startupjet v1.0 (2026-05-05). MIT License.</p>
+    <p>startupjet v1.1 (2026-05-06). MIT License.</p>
     <p style="margin-top: 6px;">Built by <strong>Jeremy Trindade</strong> · <a href="https://github.com/jeremytrindade/startupjet">GitHub</a></p>
   </footer>
 

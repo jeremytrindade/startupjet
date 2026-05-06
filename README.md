@@ -1,27 +1,37 @@
 # startupjet
 
-> One-click bootstrap for a developer workstation that follows the [Jeremy Trindade infra patterns](https://github.com/jeremytrindade). Fork it, edit `config/repos.json` and `config/prerequisites.json`, run, done.
+> One-click bootstrap for a developer workstation that follows the [Jeremy Trindade infra patterns](https://github.com/jeremytrindade). Fork it, edit `config/repos.json`, run, done.
 
 ## What it does
 
-On a fresh Windows PC, in 5 to 10 minutes:
+On a fresh Windows PC:
 
-1. Detects missing tools (git, gh, Python, PowerShell 7, OpenSSH, Tailscale, cloudflared, Node.js, VS Code).
-2. Installs them via winget.
-3. Asks which AI coding assistant(s) to install (Claude Code, OpenAI Codex, or both) via npm.
-4. Offers project-specific dependencies (e.g. Ollama + uv for local-llm-council-pc).
-5. Authenticates GitHub, Tailscale, Cloudflare interactively.
-6. Asks where to put your workspace folder.
-7. Clones a configured list of repos (skipping private ones you do not have access to).
-8. Verifies everything works with a smoke test.
-9. Tells you the canonical AI prompt to use for journaling future work.
+1. **Scans** your system for 16 tools across dev, network, AI coding, and local AI categories.
+2. **Asks everything upfront**: install all, all except local AI, or customize per-tool. Plus auth choices and workspace config.
+3. **Authenticates** GitHub, Tailscale, Cloudflare (interactive browser flows, done early).
+4. **Installs** everything you selected via winget, npm, and ollama pull. Fully unattended from here.
+5. **Clones** a configured list of repos (skipping private ones you do not have access to).
+6. **Verifies** every tool is on PATH with version check, runs a smoke test.
+7. **Reports** total time + what to do next.
+
+After answering the initial questions (~2 min), you can walk away. Come back to a fully configured PC.
+
+## Available tools
+
+| Category | Tools |
+|----------|-------|
+| Dev tools | Git, GitHub CLI, Python 3, PowerShell 7, OpenSSH, Node.js, VS Code |
+| Network | Tailscale, cloudflared |
+| AI coding assistants | Claude Code, OpenAI Codex |
+| Local AI (GPU) | Ollama, uv, llama3.1:8b (4.9 GB), qwen2.5:7b (4.7 GB), mistral:7b (4.1 GB) |
 
 ## Quick start
 
 1. Download this repo as ZIP, OR `gh repo clone jeremytrindade/startupjet`.
 2. Extract anywhere.
 3. Double-click `startupjet.bat`.
-4. Follow the prompts.
+4. Answer the setup questions (install mode, auth, workspace path).
+5. Walk away. Come back when it is done.
 
 ## Requirements
 
@@ -29,20 +39,20 @@ On a fresh Windows PC, in 5 to 10 minutes:
 - An internet connection.
 - A GitHub account (for `gh auth login`).
 - Optional: Tailscale, Cloudflare accounts if you want those configured.
+- Optional: GPU with 8GB+ VRAM for local AI models.
 
 ## Customize for your own setup
 
 Fork this repo, edit:
 
-- `config/prerequisites.json` to add or remove tools.
 - `config/repos.json` to set your own repos to clone.
-- `config/defaults.json` to change default workspace path / folder name.
 
 ## How it works
 
 - `startupjet.bat` calls `startupjet.ps1` with `-ExecutionPolicy Bypass` so PowerShell does not block.
-- `startupjet.ps1` is the single orchestrator that runs the 6 phases.
-- All logic is in PowerShell (cross-platform-ish, but currently Windows-only via winget).
+- `startupjet.ps1` is the single orchestrator that runs 7 phases: scan, choose, auth, configure, install, clone, verify.
+- All questions are asked in Phase 2. From Phase 5 onward, everything runs unattended.
+- All logic is in PowerShell (Windows-only via winget).
 
 ## License
 
@@ -50,4 +60,4 @@ MIT, see [LICENSE](LICENSE).
 
 ## Status
 
-v1.0 (2026-05-05). Tested on Windows 11. Pull requests welcome.
+v1.1 (2026-05-06). Tested on Windows 11. Pull requests welcome.

@@ -1,17 +1,26 @@
 # startupjet.ps1, fresh-PC bootstrap orchestrator (MVP, single-file).
 # Author: Jeremy Trindade. License: MIT.
+#
+# Flow: detect -> choose (all questions upfront) -> authenticate -> configure
+#       -> install (unattended) -> clone (unattended) -> verify -> summary
+#
+# After the "choose" and "authenticate" phases, no more user input is needed.
+# You can walk away and come back to a fully configured PC.
 
 $ErrorActionPreference = "Continue"
 $script:summary = @{
   installed     = @()
   alreadyHad    = @()
   failed        = @()
+  skipped       = @()
   authenticated = @()
   reposCloned   = @()
   reposSkipped  = @()
+  modelsLoaded  = @()
 }
 
 # === Helpers ===
+
 function Write-Phase($title) {
   Write-Host ""
   Write-Host ("=" * 60) -ForegroundColor Cyan
@@ -28,13 +37,11 @@ function Refresh-SessionPath {
   $userPath    = [System.Environment]::GetEnvironmentVariable("Path", "User")
   $env:Path = "$machinePath;$userPath"
 
-  # npm global bin (where claude, codex, etc. land)
   $npmGlobal = Join-Path $env:APPDATA "npm"
   if ((Test-Path $npmGlobal) -and ($env:Path -notlike "*$npmGlobal*")) {
     $env:Path += ";$npmGlobal"
   }
 
-  # Common install paths that winget uses but may not register until next login
   $extraPaths = @(
     "$env:ProgramFiles\Git\cmd"
     "$env:ProgramFiles\GitHub CLI"
@@ -58,226 +65,256 @@ function Refresh-SessionPath {
   }
 }
 
-# === Phase 1: Detect ===
-Write-Phase "PHASE 1, detect prerequisites"
+# =====================================================================
+# PHASE 1: DETECT (silent scan, no questions)
+# =====================================================================
+Write-Phase "PHASE 1, scanning your system"
 
-$prerequisites = @(
-  @{ name = "Git";          cmd = "git";        wingetId = "Git.Git" }
-  @{ name = "GitHub CLI";   cmd = "gh";         wingetId = "GitHub.cli" }
-  @{ name = "Python 3";     cmd = "python";     wingetId = "Python.Python.3.12" }
-  @{ name = "PowerShell 7"; cmd = "pwsh";       wingetId = "Microsoft.PowerShell" }
-  @{ name = "OpenSSH";      cmd = "ssh";        wingetId = $null;  manual = "Add-WindowsCapability -Online -Name OpenSSH.Client~~~~0.0.1.0" }
-  @{ name = "Tailscale";    cmd = "tailscale";  wingetId = "tailscale.tailscale" }
-  @{ name = "cloudflared";  cmd = "cloudflared";wingetId = "Cloudflare.cloudflared" }
-  @{ name = "Node.js";      cmd = "node";       wingetId = "OpenJS.NodeJS" }
-  @{ name = "VS Code";      cmd = "code";       wingetId = "Microsoft.VisualStudioCode" }
+$catalog = @(
+  # Dev tools
+  @{ id = 1;  name = "Git";            cmd = "git";        category = "dev";      method = "winget"; wingetId = "Git.Git";                   installed = $false; selected = $false }
+  @{ id = 2;  name = "GitHub CLI";     cmd = "gh";         category = "dev";      method = "winget"; wingetId = "GitHub.cli";                 installed = $false; selected = $false }
+  @{ id = 3;  name = "Python 3";       cmd = "python";     category = "dev";      method = "winget"; wingetId = "Python.Python.3.12";         installed = $false; selected = $false }
+  @{ id = 4;  name = "PowerShell 7";   cmd = "pwsh";       category = "dev";      method = "winget"; wingetId = "Microsoft.PowerShell";       installed = $false; selected = $false }
+  @{ id = 5;  name = "OpenSSH";        cmd = "ssh";        category = "dev";      method = "manual"; manual = "Add-WindowsCapability -Online -Name OpenSSH.Client~~~~0.0.1.0"; installed = $false; selected = $false }
+  @{ id = 6;  name = "Node.js";        cmd = "node";       category = "dev";      method = "winget"; wingetId = "OpenJS.NodeJS";              installed = $false; selected = $false }
+  @{ id = 7;  name = "VS Code";        cmd = "code";       category = "dev";      method = "winget"; wingetId = "Microsoft.VisualStudioCode"; installed = $false; selected = $false }
+  # Network
+  @{ id = 8;  name = "Tailscale";      cmd = "tailscale";  category = "network";  method = "winget"; wingetId = "tailscale.tailscale";        installed = $false; selected = $false }
+  @{ id = 9;  name = "cloudflared";    cmd = "cloudflared"; category = "network"; method = "winget"; wingetId = "Cloudflare.cloudflared";     installed = $false; selected = $false }
+  # AI coding assistants
+  @{ id = 10; name = "Claude Code";    cmd = "claude";     category = "ai";       method = "npm";    pkg = "@anthropic-ai/claude-code";       installed = $false; selected = $false }
+  @{ id = 11; name = "OpenAI Codex";   cmd = "codex";      category = "ai";       method = "npm";    pkg = "@openai/codex";                   installed = $false; selected = $false }
+  # Local AI (GPU)
+  @{ id = 12; name = "Ollama";         cmd = "ollama";     category = "local-ai"; method = "winget"; wingetId = "Ollama.Ollama";              installed = $false; selected = $false }
+  @{ id = 13; name = "uv";             cmd = "uv";         category = "local-ai"; method = "winget"; wingetId = "astral-sh.uv";               installed = $false; selected = $false }
+  # AI models (ollama pull)
+  @{ id = 14; name = "llama3.1:8b";    cmd = $null;        category = "model";    method = "ollama"; size = "4.9 GB";                         installed = $false; selected = $false }
+  @{ id = 15; name = "qwen2.5:7b";     cmd = $null;        category = "model";    method = "ollama"; size = "4.7 GB";                         installed = $false; selected = $false }
+  @{ id = 16; name = "mistral:7b";     cmd = $null;        category = "model";    method = "ollama"; size = "4.1 GB";                         installed = $false; selected = $false }
 )
 
-$missing = @()
-foreach ($p in $prerequisites) {
-  if (Test-Command $p.cmd) {
-    Write-Host ("  [OK] " + $p.name) -ForegroundColor Green
-    $script:summary.alreadyHad += $p.name
-  } else {
-    Write-Host ("  [--] " + $p.name + " missing") -ForegroundColor Yellow
-    $missing += $p
+# Check what is already installed
+foreach ($item in $catalog) {
+  if ($item.method -eq "ollama") {
+    # Models: check if ollama is available and model is pulled
+    if (Test-Command "ollama") {
+      $modelList = ollama list 2>&1
+      if ($modelList -match [regex]::Escape($item.name)) {
+        $item.installed = $true
+      }
+    }
+  } elseif ($item.cmd) {
+    $item.installed = Test-Command $item.cmd
   }
 }
 
+$alreadyInstalled = @($catalog | Where-Object { $_.installed })
+$notInstalled     = @($catalog | Where-Object { -not $_.installed })
+
 Write-Host ""
-Write-Host ("  $($script:summary.alreadyHad.Count) installed, $($missing.Count) missing")
-
-# === Phase 2: Install ===
-if ($missing.Count -gt 0) {
-  Write-Phase "PHASE 2, install missing tools ($($missing.Count))"
-
-  if (-not (Test-Command "winget")) {
-    Write-Host "  winget not found. Cannot auto-install. Install tools manually." -ForegroundColor Red
+foreach ($item in $catalog) {
+  if ($item.installed) {
+    Write-Host ("  [OK] " + $item.name) -ForegroundColor Green
+    $script:summary.alreadyHad += $item.name
   } else {
-    $reply = Read-Host "Install all missing? [Y/n]"
-    if ($reply -ne "n" -and $reply -ne "N") {
-      foreach ($m in $missing) {
-        Write-Host ("  Installing " + $m.name + "...")
-        if ($m.wingetId) {
-          winget install --id $m.wingetId --silent --accept-source-agreements --accept-package-agreements 2>&1 | Out-Null
-          Refresh-SessionPath
-          if (Test-Command $m.cmd) {
-            Write-Host ("  [OK] " + $m.name + " installed") -ForegroundColor Green
-            $script:summary.installed += $m.name
-          } else {
-            Write-Host ("  [!!] " + $m.name + " installed but not yet on PATH. Restart terminal after setup.") -ForegroundColor Yellow
-            $script:summary.installed += $m.name
+    $sizeNote = if ($item.size) { " ($($item.size))" } else { "" }
+    Write-Host ("  [--] " + $item.name + $sizeNote) -ForegroundColor Yellow
+  }
+}
+Write-Host ""
+Write-Host ("  $($alreadyInstalled.Count) installed, $($notInstalled.Count) available to install")
+
+# =====================================================================
+# PHASE 2: CHOOSE (all questions upfront, then no more input until done)
+# =====================================================================
+Write-Phase "PHASE 2, choose what to install"
+
+if ($notInstalled.Count -eq 0) {
+  Write-Host "  Everything is already installed!" -ForegroundColor Green
+} else {
+  Write-Host ""
+  Write-Host "  What would you like to install?" -ForegroundColor White
+  Write-Host ""
+  Write-Host "    [1] Install everything ($($notInstalled.Count) items)" -ForegroundColor Cyan
+  Write-Host "    [2] Install everything EXCEPT local AI + models (skip Ollama, uv, models)" -ForegroundColor Cyan
+  Write-Host "    [3] Customize (pick from the list)" -ForegroundColor Cyan
+  Write-Host "    [4] Skip installs (only authenticate + configure + clone)" -ForegroundColor Cyan
+  Write-Host ""
+
+  $mode = Read-Host "  Choose [1/2/3/4]"
+
+  switch ($mode) {
+    "1" {
+      foreach ($item in $notInstalled) { $item.selected = $true }
+      Write-Host "  Selected: everything ($($notInstalled.Count) items)" -ForegroundColor Green
+    }
+    "2" {
+      foreach ($item in $notInstalled) {
+        if ($item.category -ne "local-ai" -and $item.category -ne "model") {
+          $item.selected = $true
+        }
+      }
+      $selectedCount = @($catalog | Where-Object { $_.selected }).Count
+      Write-Host "  Selected: $selectedCount items (local AI skipped)" -ForegroundColor Green
+    }
+    "3" {
+      Write-Host ""
+      Write-Host "  Available to install (enter numbers separated by commas, or 'all'):" -ForegroundColor White
+      Write-Host ""
+
+      $categoryLabels = @{
+        "dev"      = "Dev tools"
+        "network"  = "Network"
+        "ai"       = "AI coding assistants"
+        "local-ai" = "Local AI (GPU)"
+        "model"    = "AI models (downloaded via Ollama)"
+      }
+      $lastCategory = ""
+      foreach ($item in $notInstalled) {
+        if ($item.category -ne $lastCategory) {
+          $lastCategory = $item.category
+          Write-Host ("    --- " + $categoryLabels[$item.category] + " ---") -ForegroundColor Cyan
+        }
+        $sizeNote = if ($item.size) { " ($($item.size))" } else { "" }
+        Write-Host ("    [$($item.id)] $($item.name)$sizeNote")
+      }
+
+      Write-Host ""
+      $picks = Read-Host "  Enter numbers (e.g. 1,2,6,10) or 'all'"
+
+      if ($picks -eq "all") {
+        foreach ($item in $notInstalled) { $item.selected = $true }
+      } else {
+        $pickedIds = $picks -split "," | ForEach-Object { $_.Trim() } | Where-Object { $_ -match "^\d+$" } | ForEach-Object { [int]$_ }
+        foreach ($item in $catalog) {
+          if ($pickedIds -contains $item.id -and -not $item.installed) {
+            $item.selected = $true
           }
-        } else {
-          Write-Host ("  No winget package. Manual install required:") -ForegroundColor Yellow
-          Write-Host ("    $($m.manual)") -ForegroundColor White
-          $script:summary.failed += $m.name
         }
       }
+
+      $selectedCount = @($catalog | Where-Object { $_.selected }).Count
+      Write-Host ""
+      Write-Host "  Selected: $selectedCount items" -ForegroundColor Green
+    }
+    default {
+      Write-Host "  Skipping installs." -ForegroundColor Yellow
     }
   }
-} else {
-  Write-Phase "PHASE 2, install (skipped, nothing missing)"
-}
 
-# === Phase 2b: AI coding assistants ===
-Write-Phase "PHASE 2b, AI coding assistants"
-
-$aiTools = @(
-  @{ name = "Claude Code";  cmd = "claude"; pkg = "@anthropic-ai/claude-code" }
-  @{ name = "OpenAI Codex"; cmd = "codex";  pkg = "@openai/codex" }
-)
-
-$npmAvailable = Test-Command "npm"
-if (-not $npmAvailable) {
-  Write-Host "  npm not available. AI coding assistants require Node.js + npm." -ForegroundColor Yellow
-  Write-Host "  Install Node.js first, then re-run startupjet." -ForegroundColor Yellow
-} else {
-  foreach ($ai in $aiTools) {
-    if (Test-Command $ai.cmd) {
-      Write-Host ("  [OK] " + $ai.name + " already installed") -ForegroundColor Green
-      $script:summary.alreadyHad += $ai.name
-    } else {
-      $reply = Read-Host ("  Install " + $ai.name + "? [y/N]")
-      if ($reply -eq "y" -or $reply -eq "Y") {
-        Write-Host ("  Installing " + $ai.name + " via npm...")
-        npm install -g $ai.pkg 2>&1 | Out-Null
-        Refresh-SessionPath
-        if (Test-Command $ai.cmd) {
-          Write-Host ("  [OK] " + $ai.name + " installed") -ForegroundColor Green
-          $script:summary.installed += $ai.name
-        } else {
-          Write-Host ("  [!!] " + $ai.name + " installed but not yet on PATH. Restart terminal after setup.") -ForegroundColor Yellow
-          $script:summary.installed += $ai.name
-        }
-      } else {
-        Write-Host ("  [skip] " + $ai.name) -ForegroundColor Yellow
-      }
+  # Show what will be installed
+  $toInstall = @($catalog | Where-Object { $_.selected })
+  if ($toInstall.Count -gt 0) {
+    Write-Host ""
+    Write-Host "  Will install:" -ForegroundColor White
+    foreach ($item in $toInstall) {
+      $sizeNote = if ($item.size) { " ($($item.size))" } else { "" }
+      Write-Host ("    + $($item.name)$sizeNote") -ForegroundColor Green
     }
   }
 }
 
-# === Phase 2c: Project-specific dependencies ===
-Write-Phase "PHASE 2c, project-specific dependencies"
-
-Write-Host "  local-llm-council-pc (local AI council on GPU)" -ForegroundColor White
-Write-Host "    Requires: Ollama (LLM runtime), uv (Python pkg manager), Python >= 3.11" -ForegroundColor Cyan
-Write-Host "    Also downloads 3 models (~14GB): llama3.1:8b, qwen2.5:7b, mistral:7b" -ForegroundColor Cyan
+# Auth choices
 Write-Host ""
+Write-Host "  Which services should we authenticate?" -ForegroundColor White
 
-$reply = Read-Host "  Install local-llm-council-pc dependencies? [y/N]"
-if ($reply -eq "y" -or $reply -eq "Y") {
-  $projectDeps = @(
-    @{ name = "Ollama";  cmd = "ollama"; wingetId = "Ollama.Ollama" }
-    @{ name = "uv";      cmd = "uv";    wingetId = "astral-sh.uv" }
-  )
+$authGh         = $false
+$authTailscale  = $false
+$authCloudflare = $false
 
-  if (-not (Test-Command "winget")) {
-    Write-Host "  winget not found, cannot auto-install." -ForegroundColor Red
-  } else {
-    foreach ($dep in $projectDeps) {
-      if (Test-Command $dep.cmd) {
-        Write-Host ("  [OK] " + $dep.name + " already installed") -ForegroundColor Green
-        $script:summary.alreadyHad += $dep.name
-      } else {
-        Write-Host ("  Installing " + $dep.name + "...")
-        winget install --id $dep.wingetId --silent --accept-source-agreements --accept-package-agreements 2>&1 | Out-Null
-        Refresh-SessionPath
-        if (Test-Command $dep.cmd) {
-          Write-Host ("  [OK] " + $dep.name + " installed") -ForegroundColor Green
-          $script:summary.installed += $dep.name
-        } else {
-          Write-Host ("  [!!] " + $dep.name + " installed but not yet on PATH. Restart terminal after setup.") -ForegroundColor Yellow
-          $script:summary.installed += $dep.name
-        }
-      }
-    }
-  }
-
-  # Ask about each model individually
-  if (Test-Command "ollama") {
-    Write-Host ""
-    Write-Host "  Optional: download AI models for the council (requires Ollama)." -ForegroundColor Cyan
-    Write-Host "  These run locally on your GPU. Each is a one-time download." -ForegroundColor Cyan
-    Write-Host ""
-
-    $models = @(
-      @{ name = "llama3.1:8b"; size = "4.9 GB" }
-      @{ name = "qwen2.5:7b";  size = "4.7 GB" }
-      @{ name = "mistral:7b";  size = "4.1 GB" }
-    )
-
-    foreach ($model in $models) {
-      $reply = Read-Host ("  Download " + $model.name + " (" + $model.size + ")? [y/N]")
-      if ($reply -eq "y" -or $reply -eq "Y") {
-        Write-Host ("  Pulling " + $model.name + " (this may take a few minutes)...")
-        ollama pull $model.name
-        if ($LASTEXITCODE -eq 0) {
-          Write-Host ("  [OK] " + $model.name + " ready") -ForegroundColor Green
-        } else {
-          Write-Host ("  [!!] " + $model.name + " pull failed") -ForegroundColor Red
-        }
-      } else {
-        Write-Host ("  [skip] " + $model.name) -ForegroundColor Yellow
-      }
-    }
-  }
-} else {
-  Write-Host "  [skip] local-llm-council-pc dependencies" -ForegroundColor Yellow
-}
-
-# === Phase 3: Authenticate ===
-Write-Phase "PHASE 3, authenticate accounts"
-
+# GitHub: always ask if not already authed
 if (Test-Command "gh") {
   $ghStatus = gh auth status 2>&1
   if ($LASTEXITCODE -ne 0) {
-    Write-Host "  Running gh auth login (follow the browser prompts)..."
-    gh auth login
+    $reply = Read-Host "  Authenticate GitHub CLI? [Y/n]"
+    $authGh = ($reply -ne "n" -and $reply -ne "N")
   } else {
     Write-Host "  [OK] GitHub CLI already authenticated" -ForegroundColor Green
+    $script:summary.authenticated += "GitHub (gh)"
   }
-  $script:summary.authenticated += "GitHub (gh)"
 } else {
-  Write-Host "  [skip] gh not available, skipping GitHub auth" -ForegroundColor Yellow
+  Write-Host "  [skip] gh not installed yet (will auth after install if selected)" -ForegroundColor Yellow
+  # If gh is in the install list, flag for post-install auth
+  $ghSelected = $catalog | Where-Object { $_.name -eq "GitHub CLI" -and $_.selected }
+  if ($ghSelected) { $authGh = $true }
 }
 
-$reply = Read-Host "Authenticate Tailscale now? [y/N]"
-if ($reply -eq "y" -or $reply -eq "Y") {
+$reply = Read-Host "  Authenticate Tailscale? [y/N]"
+$authTailscale = ($reply -eq "y" -or $reply -eq "Y")
+
+$reply = Read-Host "  Authenticate cloudflared? [y/N]"
+$authCloudflare = ($reply -eq "y" -or $reply -eq "Y")
+
+# Configure workspace
+Write-Host ""
+Write-Host "  Workspace configuration:" -ForegroundColor White
+
+$workspacePath = Read-Host "  Workspace path [D:\claudeui]"
+if ([string]::IsNullOrWhiteSpace($workspacePath)) { $workspacePath = "D:\claudeui" }
+
+$githubUser = Read-Host "  GitHub username [jeremytrindade]"
+if ([string]::IsNullOrWhiteSpace($githubUser)) { $githubUser = "jeremytrindade" }
+
+$gitEmail = Read-Host "  Git email [jeremytrindade@gmail.com]"
+if ([string]::IsNullOrWhiteSpace($gitEmail)) { $gitEmail = "jeremytrindade@gmail.com" }
+
+# =====================================================================
+# From here on, NO MORE USER INPUT. Everything runs unattended.
+# =====================================================================
+
+Write-Host ""
+Write-Host ("=" * 60) -ForegroundColor Green
+Write-Host " All questions answered. Running unattended from here." -ForegroundColor Green
+Write-Host " You can walk away. Come back when it is done." -ForegroundColor Green
+Write-Host ("=" * 60) -ForegroundColor Green
+
+$startTime = Get-Date
+
+# =====================================================================
+# PHASE 3: AUTHENTICATE (interactive browser flows, before installs)
+# =====================================================================
+Write-Phase "PHASE 3, authenticate"
+
+if ($authGh -and (Test-Command "gh")) {
+  Write-Host "  Running gh auth login..."
+  gh auth login
+  $script:summary.authenticated += "GitHub (gh)"
+}
+
+if ($authTailscale) {
   if (Test-Command "tailscale") {
+    Write-Host "  Running tailscale up..."
     tailscale up
     $script:summary.authenticated += "Tailscale"
   } else {
-    Write-Host "  tailscale not installed, skipping" -ForegroundColor Yellow
+    Write-Host "  [defer] Tailscale not installed yet, will auth after install" -ForegroundColor Yellow
   }
 }
 
-$reply = Read-Host "Authenticate cloudflared now? [y/N]"
-if ($reply -eq "y" -or $reply -eq "Y") {
+if ($authCloudflare) {
   if (Test-Command "cloudflared") {
+    Write-Host "  Running cloudflared tunnel login..."
     cloudflared tunnel login
     $script:summary.authenticated += "cloudflared"
   } else {
-    Write-Host "  cloudflared not installed, skipping" -ForegroundColor Yellow
+    Write-Host "  [defer] cloudflared not installed yet, will auth after install" -ForegroundColor Yellow
   }
 }
 
-# === Phase 4: Configure ===
-Write-Phase "PHASE 4, configure workspace"
+# =====================================================================
+# PHASE 4: CONFIGURE (git identity + save config)
+# =====================================================================
+Write-Phase "PHASE 4, configure"
 
-$workspacePath = Read-Host "Workspace path [D:\claudeui]"
-if ([string]::IsNullOrWhiteSpace($workspacePath)) { $workspacePath = "D:\claudeui" }
+if (Test-Command "git") {
+  git config --global user.email $gitEmail
+  git config --global user.name $githubUser
+  Write-Host "  [OK] git user.name=$githubUser user.email=$gitEmail" -ForegroundColor Green
+} else {
+  Write-Host "  [defer] git not installed yet, will configure after install" -ForegroundColor Yellow
+}
 
-$githubUser = Read-Host "GitHub username [jeremytrindade]"
-if ([string]::IsNullOrWhiteSpace($githubUser)) { $githubUser = "jeremytrindade" }
-
-$gitEmail = Read-Host "Git email [jeremytrindade@gmail.com]"
-if ([string]::IsNullOrWhiteSpace($gitEmail)) { $gitEmail = "jeremytrindade@gmail.com" }
-
-git config --global user.email $gitEmail
-git config --global user.name $githubUser
-
-# Save user config
 $configDir = Join-Path $PSScriptRoot "config"
 New-Item -ItemType Directory -Force -Path $configDir | Out-Null
 $configPath = Join-Path $configDir "user-config.json"
@@ -287,11 +324,139 @@ $configPath = Join-Path $configDir "user-config.json"
   gitEmail      = $gitEmail
   timestamp     = (Get-Date -Format "yyyy-MM-dd HH:mm:ss")
 } | ConvertTo-Json | Out-File $configPath -Encoding UTF8
+Write-Host "  [OK] Config saved to $configPath" -ForegroundColor Green
 
-Write-Host "  Config saved to $configPath" -ForegroundColor Green
+# =====================================================================
+# PHASE 5: INSTALL (fully unattended)
+# =====================================================================
+Write-Phase "PHASE 5, install selected tools"
 
-# === Phase 5: Clone repos ===
-Write-Phase "PHASE 5, clone repos"
+$toInstall = @($catalog | Where-Object { $_.selected })
+
+if ($toInstall.Count -eq 0) {
+  Write-Host "  Nothing to install." -ForegroundColor Yellow
+} else {
+  $hasWinget = Test-Command "winget"
+
+  # 5a: winget installs
+  $wingetItems = @($toInstall | Where-Object { $_.method -eq "winget" })
+  if ($wingetItems.Count -gt 0) {
+    if (-not $hasWinget) {
+      Write-Host "  winget not found. Cannot auto-install winget packages." -ForegroundColor Red
+      foreach ($w in $wingetItems) { $script:summary.failed += $w.name }
+    } else {
+      foreach ($item in $wingetItems) {
+        Write-Host ("  [$($wingetItems.IndexOf($item) + 1)/$($wingetItems.Count)] Installing $($item.name)...")
+        winget install --id $item.wingetId --silent --accept-source-agreements --accept-package-agreements 2>&1 | Out-Null
+        Refresh-SessionPath
+        if ($item.cmd -and (Test-Command $item.cmd)) {
+          Write-Host ("  [OK] $($item.name)") -ForegroundColor Green
+          $script:summary.installed += $item.name
+        } else {
+          Write-Host ("  [OK] $($item.name) (may need terminal restart for PATH)") -ForegroundColor Yellow
+          $script:summary.installed += $item.name
+        }
+      }
+    }
+  }
+
+  # 5b: manual installs (OpenSSH)
+  $manualItems = @($toInstall | Where-Object { $_.method -eq "manual" })
+  foreach ($item in $manualItems) {
+    Write-Host ("  Installing $($item.name) via system capability...")
+    try {
+      Invoke-Expression $item.manual 2>&1 | Out-Null
+      Refresh-SessionPath
+      if ($item.cmd -and (Test-Command $item.cmd)) {
+        Write-Host ("  [OK] $($item.name)") -ForegroundColor Green
+        $script:summary.installed += $item.name
+      } else {
+        Write-Host ("  [OK] $($item.name) (may need terminal restart)") -ForegroundColor Yellow
+        $script:summary.installed += $item.name
+      }
+    } catch {
+      Write-Host ("  [FAIL] $($item.name): $_") -ForegroundColor Red
+      $script:summary.failed += $item.name
+    }
+  }
+
+  # Refresh PATH before npm installs (need node/npm from winget)
+  Refresh-SessionPath
+
+  # 5c: npm installs (AI coding assistants)
+  $npmItems = @($toInstall | Where-Object { $_.method -eq "npm" })
+  if ($npmItems.Count -gt 0) {
+    if (-not (Test-Command "npm")) {
+      Write-Host "  npm not available. Skipping AI coding assistants." -ForegroundColor Yellow
+      foreach ($n in $npmItems) { $script:summary.failed += $n.name }
+    } else {
+      foreach ($item in $npmItems) {
+        Write-Host ("  Installing $($item.name) via npm...")
+        npm install -g $item.pkg 2>&1 | Out-Null
+        Refresh-SessionPath
+        if ($item.cmd -and (Test-Command $item.cmd)) {
+          Write-Host ("  [OK] $($item.name)") -ForegroundColor Green
+          $script:summary.installed += $item.name
+        } else {
+          Write-Host ("  [OK] $($item.name) (may need terminal restart for PATH)") -ForegroundColor Yellow
+          $script:summary.installed += $item.name
+        }
+      }
+    }
+  }
+
+  # 5d: ollama model pulls
+  $modelItems = @($toInstall | Where-Object { $_.method -eq "ollama" })
+  if ($modelItems.Count -gt 0) {
+    Refresh-SessionPath
+    if (-not (Test-Command "ollama")) {
+      Write-Host "  Ollama not available. Skipping model downloads." -ForegroundColor Yellow
+      foreach ($m in $modelItems) { $script:summary.failed += $m.name }
+    } else {
+      foreach ($item in $modelItems) {
+        Write-Host ("  Pulling $($item.name) ($($item.size), this may take a while)...")
+        ollama pull $item.name 2>&1
+        if ($LASTEXITCODE -eq 0) {
+          Write-Host ("  [OK] $($item.name)") -ForegroundColor Green
+          $script:summary.modelsLoaded += $item.name
+        } else {
+          Write-Host ("  [FAIL] $($item.name)") -ForegroundColor Red
+          $script:summary.failed += $item.name
+        }
+      }
+    }
+  }
+
+  # 5e: deferred auth (tools that were not available during Phase 3)
+  Refresh-SessionPath
+
+  if ($authGh -and (Test-Command "gh") -and ($script:summary.authenticated -notcontains "GitHub (gh)")) {
+    Write-Host "  Running deferred gh auth login..."
+    gh auth login
+    $script:summary.authenticated += "GitHub (gh)"
+  }
+  if ($authTailscale -and (Test-Command "tailscale") -and ($script:summary.authenticated -notcontains "Tailscale")) {
+    Write-Host "  Running deferred tailscale up..."
+    tailscale up
+    $script:summary.authenticated += "Tailscale"
+  }
+  if ($authCloudflare -and (Test-Command "cloudflared") -and ($script:summary.authenticated -notcontains "cloudflared")) {
+    Write-Host "  Running deferred cloudflared tunnel login..."
+    cloudflared tunnel login
+    $script:summary.authenticated += "cloudflared"
+  }
+
+  # 5f: deferred git config (if git was just installed)
+  if (Test-Command "git") {
+    git config --global user.email $gitEmail
+    git config --global user.name $githubUser
+  }
+}
+
+# =====================================================================
+# PHASE 6: CLONE REPOS (unattended)
+# =====================================================================
+Write-Phase "PHASE 6, clone repos"
 
 $githubFolder = Join-Path $workspacePath "github"
 New-Item -ItemType Directory -Force -Path $githubFolder | Out-Null
@@ -301,7 +466,6 @@ if (Test-Path $reposJsonPath) {
   $reposData = Get-Content $reposJsonPath -Raw | ConvertFrom-Json
   $repos = $reposData.repos
 } else {
-  # Fallback defaults if no config file
   $repos = @(
     [PSCustomObject]@{ owner = "jeremytrindade"; name = "playbook";   required = $true }
     [PSCustomObject]@{ owner = "jeremytrindade"; name = "ai-journal"; required = $true }
@@ -312,7 +476,7 @@ foreach ($repo in $repos) {
   $url  = "https://github.com/$($repo.owner)/$($repo.name).git"
   $dest = Join-Path $githubFolder $repo.name
   if (Test-Path $dest) {
-    Write-Host ("  [skip] " + $repo.name + " already exists at $dest")
+    Write-Host ("  [skip] " + $repo.name + " already exists")
     continue
   }
   Write-Host ("  cloning " + $repo.name + "...")
@@ -330,36 +494,37 @@ foreach ($repo in $repos) {
   }
 }
 
-# === Phase 6: Verify ===
-Write-Phase "PHASE 6, verify"
+# =====================================================================
+# PHASE 7: VERIFY (unattended)
+# =====================================================================
+Write-Phase "PHASE 7, verify"
 
-# Final PATH refresh to pick up everything installed during this session
 Refresh-SessionPath
 
-Write-Host "  Verifying all tools are reachable on PATH..." -ForegroundColor Cyan
+Write-Host "  Checking all tools on PATH..." -ForegroundColor Cyan
 Write-Host ""
 
-$allTools = @(
-  @{ name = "Git";          cmd = "git";        versionFlag = "--version" }
-  @{ name = "GitHub CLI";   cmd = "gh";         versionFlag = "--version" }
-  @{ name = "Python 3";     cmd = "python";     versionFlag = "--version" }
-  @{ name = "PowerShell 7"; cmd = "pwsh";       versionFlag = "--version" }
-  @{ name = "OpenSSH";      cmd = "ssh";        versionFlag = "-V" }
-  @{ name = "Node.js";      cmd = "node";       versionFlag = "--version" }
-  @{ name = "npm";          cmd = "npm";        versionFlag = "--version" }
-  @{ name = "VS Code";      cmd = "code";       versionFlag = "--version" }
-  @{ name = "Tailscale";    cmd = "tailscale";  versionFlag = "--version" }
-  @{ name = "cloudflared";  cmd = "cloudflared";versionFlag = "--version" }
-  @{ name = "Claude Code";  cmd = "claude";     versionFlag = "--version" }
-  @{ name = "OpenAI Codex"; cmd = "codex";      versionFlag = "--version" }
-  @{ name = "Ollama";       cmd = "ollama";     versionFlag = "--version" }
-  @{ name = "uv";           cmd = "uv";         versionFlag = "--version" }
+$verifyList = @(
+  @{ name = "Git";          cmd = "git";        flag = "--version" }
+  @{ name = "GitHub CLI";   cmd = "gh";         flag = "--version" }
+  @{ name = "Python 3";     cmd = "python";     flag = "--version" }
+  @{ name = "PowerShell 7"; cmd = "pwsh";       flag = "--version" }
+  @{ name = "OpenSSH";      cmd = "ssh";        flag = "-V" }
+  @{ name = "Node.js";      cmd = "node";       flag = "--version" }
+  @{ name = "npm";          cmd = "npm";        flag = "--version" }
+  @{ name = "VS Code";      cmd = "code";       flag = "--version" }
+  @{ name = "Tailscale";    cmd = "tailscale";  flag = "--version" }
+  @{ name = "cloudflared";  cmd = "cloudflared";flag = "--version" }
+  @{ name = "Claude Code";  cmd = "claude";     flag = "--version" }
+  @{ name = "OpenAI Codex"; cmd = "codex";      flag = "--version" }
+  @{ name = "Ollama";       cmd = "ollama";     flag = "--version" }
+  @{ name = "uv";           cmd = "uv";         flag = "--version" }
 )
 
 $notOnPath = @()
-foreach ($t in $allTools) {
+foreach ($t in $verifyList) {
   if (Test-Command $t.cmd) {
-    $ver = & $t.cmd $t.versionFlag 2>&1 | Select-Object -First 1
+    $ver = & $t.cmd $t.flag 2>&1 | Select-Object -First 1
     Write-Host ("  [OK] " + $t.name + ": $ver") -ForegroundColor Green
   } else {
     $notOnPath += $t.name
@@ -374,20 +539,16 @@ if ($notOnPath.Count -gt 0) {
   }
 }
 
-# Smoke test: write to ai-journal if cloned
+# Smoke test
 Write-Host ""
 $aiJournal = Join-Path $githubFolder "ai-journal"
 if (Test-Path $aiJournal) {
-  Write-Host "  ai-journal smoke test..."
   $testFile = Join-Path $aiJournal "_startupjet-smoke-test.tmp"
   "smoke test $(Get-Date -Format 'yyyy-MM-dd HH:mm:ss')" | Out-File $testFile -Encoding UTF8
   Remove-Item $testFile -Force
-  Write-Host "  [OK] write smoke test passed" -ForegroundColor Green
-} else {
-  Write-Host "  [skip] ai-journal not cloned, skipping smoke test" -ForegroundColor Yellow
+  Write-Host "  [OK] ai-journal write smoke test passed" -ForegroundColor Green
 }
 
-# gh auth verify
 if (Test-Command "gh") {
   $ghWho = gh api user --jq '.login' 2>&1
   if ($LASTEXITCODE -eq 0) {
@@ -395,16 +556,23 @@ if (Test-Command "gh") {
   }
 }
 
-# === Summary ===
+# =====================================================================
+# SUMMARY
+# =====================================================================
+$elapsed = (Get-Date) - $startTime
+
 Write-Phase "SUMMARY"
-Write-Host ("  Installed:        " + ($script:summary.installed -join ", "))
+Write-Host ""
+Write-Host ("  Installed:        " + (($script:summary.installed | Select-Object -Unique) -join ", "))
 Write-Host ("  Already had:      " + ($script:summary.alreadyHad -join ", "))
-Write-Host ("  Failed install:   " + ($script:summary.failed -join ", "))
+Write-Host ("  Models loaded:    " + ($script:summary.modelsLoaded -join ", "))
+Write-Host ("  Failed:           " + ($script:summary.failed -join ", "))
 Write-Host ("  Authenticated:    " + ($script:summary.authenticated -join ", "))
 Write-Host ("  Repos cloned:     " + ($script:summary.reposCloned -join ", "))
 Write-Host ("  Repos skipped:    " + ($script:summary.reposSkipped -join ", "))
 Write-Host ""
-Write-Host "  Workspace ready at: $workspacePath" -ForegroundColor Cyan
+Write-Host ("  Total time: " + $elapsed.ToString("hh\:mm\:ss")) -ForegroundColor Cyan
+Write-Host ("  Workspace ready at: $workspacePath") -ForegroundColor Cyan
 Write-Host ""
 Write-Host "  Now in any AI chat, paste this:" -ForegroundColor Cyan
 Write-Host ""
