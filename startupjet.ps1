@@ -194,9 +194,34 @@ if ($reply -eq "y" -or $reply -eq "Y") {
     }
   }
 
-  Write-Host ""
-  Write-Host "  Note: the 3 AI models (~14GB) are downloaded by the project's own setup.bat." -ForegroundColor Cyan
-  Write-Host "  After startupjet finishes, run: D:\claudeui\github\local-llm-council-pc\setup.bat" -ForegroundColor White
+  # Ask about each model individually
+  if (Test-Command "ollama") {
+    Write-Host ""
+    Write-Host "  Optional: download AI models for the council (requires Ollama)." -ForegroundColor Cyan
+    Write-Host "  These run locally on your GPU. Each is a one-time download." -ForegroundColor Cyan
+    Write-Host ""
+
+    $models = @(
+      @{ name = "llama3.1:8b"; size = "4.9 GB" }
+      @{ name = "qwen2.5:7b";  size = "4.7 GB" }
+      @{ name = "mistral:7b";  size = "4.1 GB" }
+    )
+
+    foreach ($model in $models) {
+      $reply = Read-Host ("  Download " + $model.name + " (" + $model.size + ")? [y/N]")
+      if ($reply -eq "y" -or $reply -eq "Y") {
+        Write-Host ("  Pulling " + $model.name + " (this may take a few minutes)...")
+        ollama pull $model.name
+        if ($LASTEXITCODE -eq 0) {
+          Write-Host ("  [OK] " + $model.name + " ready") -ForegroundColor Green
+        } else {
+          Write-Host ("  [!!] " + $model.name + " pull failed") -ForegroundColor Red
+        }
+      } else {
+        Write-Host ("  [skip] " + $model.name) -ForegroundColor Yellow
+      }
+    }
+  }
 } else {
   Write-Host "  [skip] local-llm-council-pc dependencies" -ForegroundColor Yellow
 }
