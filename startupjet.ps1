@@ -610,14 +610,28 @@ if ($vscodeAvailable) {
 Write-Host ""
 Write-Host "  Workspace configuration:" -ForegroundColor White
 
-$workspacePath = Read-Host "  Workspace path [D:\claudeui]"
-if ([string]::IsNullOrWhiteSpace($workspacePath)) { $workspacePath = "D:\claudeui" }
+# Load defaults from config/defaults.json if available
+$defaultWorkspace = "D:\claudeui"
+$defaultGithubUser = "jeremytrindade"
+$defaultGitEmail = "jeremytrindade@gmail.com"
+$defaultsPath = Join-Path $PSScriptRoot "config\defaults.json"
+if (Test-Path $defaultsPath) {
+  try {
+    $defaults = Get-Content $defaultsPath -Raw | ConvertFrom-Json
+    if ($defaults.workspacePath) { $defaultWorkspace = $defaults.workspacePath }
+    if ($defaults.githubUser)    { $defaultGithubUser = $defaults.githubUser }
+    if ($defaults.gitEmail)      { $defaultGitEmail = $defaults.gitEmail }
+  } catch {}
+}
 
-$githubUser = Read-Host "  GitHub username [jeremytrindade]"
-if ([string]::IsNullOrWhiteSpace($githubUser)) { $githubUser = "jeremytrindade" }
+$workspacePath = Read-Host "  Workspace path [$defaultWorkspace]"
+if ([string]::IsNullOrWhiteSpace($workspacePath)) { $workspacePath = $defaultWorkspace }
 
-$gitEmail = Read-Host "  Git email [jeremytrindade@gmail.com]"
-if ([string]::IsNullOrWhiteSpace($gitEmail)) { $gitEmail = "jeremytrindade@gmail.com" }
+$githubUser = Read-Host "  GitHub username [$defaultGithubUser]"
+if ([string]::IsNullOrWhiteSpace($githubUser)) { $githubUser = $defaultGithubUser }
+
+$gitEmail = Read-Host "  Git email [$defaultGitEmail]"
+if ([string]::IsNullOrWhiteSpace($gitEmail)) { $gitEmail = $defaultGitEmail }
 
 # =====================================================================
 # From here on, NO MORE USER INPUT. Everything runs unattended.
