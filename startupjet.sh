@@ -208,7 +208,7 @@ phase2_choose() {
   echo ""
   echo "  [A] Minimal dev    - Git, GitHub CLI, Python, Node, pwsh, OpenSSH"
   echo "  [B] Developer      - A + VS Code, Tailscale, cloudflared, dev settings"
-  echo "  [C] Full setup     - B + Claude Code, OpenAI Codex"
+  echo "  [C] Full setup     - B + Claude Code, OpenAI Codex, all but local LLMs"
   echo "  [D] AI workstation - C + Ollama, uv, recommended models"
   echo "  [E] Custom         - Pick everything yourself"
   echo ""

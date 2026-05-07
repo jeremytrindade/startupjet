@@ -522,7 +522,7 @@ if ($notInstalled.Count -eq 0) {
   Write-Host ""
   Write-Host "    [A] Minimal dev    (Git, gh, Python, Node, pwsh, OpenSSH)" -ForegroundColor Cyan
   Write-Host "    [B] Developer      (A + VS Code, Tailscale, cloudflared, dev settings)" -ForegroundColor Cyan
-  Write-Host "    [C] Full setup     (B + Claude Code, OpenAI Codex)" -ForegroundColor Cyan
+  Write-Host "    [C] Full setup     (B + Claude Code, OpenAI Codex, all but local LLMs)" -ForegroundColor Cyan
   if ($script:localAiCapable) {
     Write-Host "    [D] AI workstation (C + Ollama, uv, recommended models)" -ForegroundColor Cyan
   }
