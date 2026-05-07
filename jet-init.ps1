@@ -764,12 +764,22 @@ function Save-Progress($itemName) {
 $script:pcType = $null   # "FullDev" or "Shared"
 $script:mode   = $null   # "Install", "Update", or "Fix"
 
-if ($Update)      { $script:mode = "Update" }
-elseif ($Fix)     { $script:mode = "Fix" }
-else              { $script:mode = "Install" }
+if ($Update)              { $script:mode = "Update" }
+elseif ($Fix)             { $script:mode = "Fix" }
+elseif ($script:doctorMode) { $script:mode = "Doctor" }
+else                      { $script:mode = "Install" }
 
 if ($FullDev)     { $script:pcType = "FullDev" }
 elseif ($Shared)  { $script:pcType = "Shared" }
+
+# Doctor verb is read-only and pcType-agnostic. Run audit and exit before
+# any interactive prompts.
+if ($script:doctorMode) {
+  try { Invoke-FixMode -ReadOnly } finally { Stop-Transcript | Out-Null }
+  Write-Host ""
+  Read-Host "  Press Enter to close"
+  exit 0
+}
 
 # Read persisted pcType from a previous run, unless overridden by flag.
 $persistedPcType = $null
@@ -796,8 +806,8 @@ function Read-HostOrDefault {
   return (Read-Host $Prompt)
 }
 
-# Interactive top-level mode prompt only when no mode flag was passed.
-if (-not $Update -and -not $Fix -and -not $FullDev -and -not $Shared) {
+# Interactive top-level mode prompt only when no mode/verb was passed.
+if (-not $Update -and -not $Fix -and -not $FullDev -and -not $Shared -and -not $script:doctorMode) {
   Write-Host ""
   Write-Host "  What do you want to do?" -ForegroundColor White
   Write-Host "    [I] Install / set up this PC (default)"
@@ -838,13 +848,7 @@ if ($script:pcType -eq "FullDev" -and -not $script:isAdmin) {
   Write-Host "  for THIS account; other accounts won't pick them up until an admin run)." -ForegroundColor Yellow
 }
 
-# Doctor mode: read-only audit, no apply prompts, no install.
-if ($script:doctorMode) {
-  try { Invoke-FixMode -ReadOnly } finally { Stop-Transcript | Out-Null }
-  Write-Host ""
-  Read-Host "  Press Enter to close"
-  exit 0
-}
+# (doctor mode handled earlier, before PHASE 0 prompts)
 
 # Fix-only mode: audit and exit, no PHASE 1 scan / install / clone.
 if ($script:mode -eq "Fix") {
