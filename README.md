@@ -1,6 +1,35 @@
 # startupjet
 
-> One-click bootstrap for a fresh developer workstation. Windows, macOS, and Linux. Fork it, edit the `config/` files, run, done.
+> One tool to set up and maintain a developer workstation. Windows-first, macOS and Linux supported. Fork it, edit the `config/` files, run, done.
+
+## Verbs
+
+`startupjet` is structured like `brew` or `scoop`: one tool, multiple verbs.
+
+| Verb | What it does |
+|---|---|
+| `install` (default) | Set up this account / PC: scan, install, auth, configure, clone repos. |
+| `fix` | Walk every Windows account, find duplicate Ollama models / npm globals / uv cache / pip cache, offer to consolidate them into shared locations on the largest non-system disk. Cross-account aware. |
+| `doctor` | Read-only health check. Same audit as `fix`, no apply prompts. |
+| `update` | Upgrade installed tools to their latest versions. |
+| `help` | Show usage. |
+
+```bat
+startupjet                       :: interactive install
+startupjet fix -FullDev          :: consolidate cross-account waste
+startupjet doctor                :: are things okay? (no changes)
+startupjet update                :: upgrade everything
+startupjet install -FullDev -Yes :: unattended, cross-account install
+```
+
+## PC type
+
+The first time you run `install` or `fix`, it asks how this PC is used. The answer is persisted to `config/user-config.json` so it does not ask again.
+
+| Choice | Meaning |
+|---|---|
+| Full developer PC | All accounts on this PC are you. Sets Machine-wide env vars (`OLLAMA_MODELS`, `NPM_CONFIG_PREFIX`, `UV_CACHE_DIR`, `PIP_CACHE_DIR`), grants `BUILTIN\Users` Modify on the shared dirs, migrates other accounts' caches. Needs admin to land Machine-scope changes. |
+| Shared PC | Other people use this. Per-account installs only. Machine-wide settings never written. Other accounts' folders never touched. |
 
 ## What it does
 

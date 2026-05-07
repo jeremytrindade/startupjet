@@ -1,9 +1,19 @@
 @echo off
 REM startupjet entry point. Runs the PowerShell orchestrator with execution policy bypass.
 REM Usage:
-REM   startupjet.bat              Normal install
-REM   startupjet.bat -Update      Upgrade installed tools
-REM   startupjet.bat -DryRun      Show what would happen without doing anything
+REM   startupjet.bat                       Interactive install (default)
+REM   startupjet.bat install               Same as above
+REM   startupjet.bat fix                   Audit + offer to consolidate cross-account waste
+REM   startupjet.bat doctor                Read-only health check
+REM   startupjet.bat update                Upgrade installed tools
+REM   startupjet.bat help                  Show full help
+REM
+REM PC type:
+REM   startupjet.bat install -FullDev      Cross-account install (Machine scope)
+REM   startupjet.bat install -Shared       Per-account install only
+REM
+REM Non-interactive:
+REM   startupjet.bat install -FullDev -Yes  Accept all defaults
 
 cd /d "%~dp0"
 echo.

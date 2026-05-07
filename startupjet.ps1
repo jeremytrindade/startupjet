@@ -10,9 +10,11 @@
 #       -> install (unattended) -> clone (unattended) -> verify -> summary
 
 param(
-  [switch]$Update,
+  [Parameter(Position=0)]
+  [string]$Verb = "",   # positional verb: install | fix | update | doctor | help
+  [switch]$Update,      # alias for: startupjet update
   [switch]$DryRun,
-  [switch]$Fix,         # audit-only: walk profiles for duplicates, do not install
+  [switch]$Fix,         # alias for: startupjet fix
   [switch]$FullDev,     # full developer PC: cross-account install (Machine scope)
   [switch]$Shared,      # shared PC: per-account install only (User scope)
   [switch]$Yes,         # non-interactive: accept the default answer at every prompt
@@ -22,6 +24,23 @@ param(
 
 $script:assumeYes = [bool]$Yes
 
+# Verb resolution. Verb takes precedence over the flag aliases.
+$verbNorm = $Verb.Trim().ToLowerInvariant()
+if ($verbNorm -eq "help" -or $verbNorm -eq "-h" -or $verbNorm -eq "--help") {
+  $Help = $true
+}
+elseif ($verbNorm -eq "version" -or $verbNorm -eq "-v" -or $verbNorm -eq "--version") {
+  $ShowVersion = $true
+}
+elseif ($verbNorm -eq "update")   { $Update = $true }
+elseif ($verbNorm -eq "fix")      { $Fix    = $true }
+elseif ($verbNorm -eq "doctor")   { $script:doctorMode = $true }
+elseif ($verbNorm -eq "install")  { } # default
+elseif ($verbNorm -ne "")         {
+  Write-Host "Unknown verb '$Verb'. Try: install | fix | update | doctor | help" -ForegroundColor Red
+  exit 2
+}
+
 $script:VERSION = "1.2"
 
 if ($ShowVersion) {
@@ -30,19 +49,23 @@ if ($ShowVersion) {
 }
 
 if ($Help) {
-  Write-Host "startupjet v$script:VERSION - fresh-PC bootstrap for Windows"
+  Write-Host "startupjet v$script:VERSION - set up and maintain a Windows dev PC"
   Write-Host ""
-  Write-Host "Usage: startupjet.bat [mode] [pc-type] [-DryRun] [-ShowVersion] [-Help]"
+  Write-Host "Usage: startupjet.bat <verb> [pc-type] [options]"
   Write-Host ""
-  Write-Host "Mode (default: install, ask interactively):"
-  Write-Host "  -Update       Upgrade installed tools"
-  Write-Host "  -Fix          Audit only, walk every account for cross-account"
-  Write-Host "                waste and report findings, no install"
+  Write-Host "Verbs:"
+  Write-Host "  install   Set up this account / PC (default if no verb given)"
+  Write-Host "  fix       Audit every account for cross-account waste and offer"
+  Write-Host "            to consolidate (Ollama models, npm/uv/pip caches)"
+  Write-Host "  update    Upgrade installed tools to their latest versions"
+  Write-Host "  doctor    Read-only health check, walks profiles + auth state,"
+  Write-Host "            reports findings without changing anything"
+  Write-Host "  help      Show this help"
   Write-Host ""
-  Write-Host "PC type (default: ask interactively):"
+  Write-Host "PC type (default: ask interactively, then persisted in user-config.json):"
   Write-Host "  -FullDev      Full developer PC (mine, all accounts are me)"
-  Write-Host "                Cross-account install: Machine-wide env vars,"
-  Write-Host "                shared Ollama models, etc. Needs admin to land"
+  Write-Host "                Cross-account: Machine-wide env vars, shared"
+  Write-Host "                Ollama models, etc. Needs admin to land"
   Write-Host "                Machine-scope changes."
   Write-Host "  -Shared       Shared PC (others use it). Per-account only,"
   Write-Host "                no machine-wide changes."
@@ -52,6 +75,13 @@ if ($Help) {
   Write-Host "  -DryRun       Show what would happen without making changes"
   Write-Host "  -ShowVersion  Show version"
   Write-Host "  -Help         Show this help"
+  Write-Host ""
+  Write-Host "Examples:"
+  Write-Host "  startupjet                      # interactive install"
+  Write-Host "  startupjet install -FullDev     # cross-account install, default answers"
+  Write-Host "  startupjet fix -FullDev -Yes    # consolidate, no prompts"
+  Write-Host "  startupjet doctor               # health check, no changes"
+  Write-Host "  startupjet update               # upgrade installed tools"
   exit 0
 }
 
@@ -477,10 +507,13 @@ function Get-DirSizeGB {
 }
 
 function Invoke-FixMode {
-  # Audit this account for cross-account waste and offer to consolidate.
-  # Does NOT install anything. Does NOT clone repos. Read-only by default,
-  # mutating only after explicit confirmation per finding.
-  Write-Phase "FIX MODE, audit this account for cross-account waste"
+  param(
+    [switch] $ReadOnly  # doctor verb: audit only, never offer to apply fixes
+  )
+  # Audit this account for cross-account waste and (unless -ReadOnly) offer
+  # to consolidate. Does NOT install anything. Does NOT clone repos.
+  $banner = if ($ReadOnly) { "DOCTOR MODE, read-only audit" } else { "FIX MODE, audit + offer to consolidate" }
+  Write-Phase $banner
   Write-Host ""
   Write-Host "  Walking each Windows account profile to find duplicates..." -ForegroundColor DarkGray
   Write-Host ""
@@ -649,10 +682,16 @@ function Invoke-FixMode {
   }
   Write-Host ""
 
+  if ($ReadOnly) {
+    Write-Host "  (read-only audit, doctor verb skips the apply prompts)" -ForegroundColor DarkGray
+    Write-Host ""
+    return
+  }
+
   $ollamaFinding = $findings | Where-Object { $_.Tool -eq "Ollama models" } | Select-Object -First 1
   if ($ollamaFinding) {
     if ($script:isAdmin) {
-      $reply = Read-Host "  Run the Ollama consolidation now? [Y/n]"
+      $reply = Read-HostOrDefault "  Run the Ollama consolidation now? [Y/n]" "Y"
       if ($reply -ne "n" -and $reply -ne "N") {
         $script:ollamaModelsPath = Choose-OllamaStorage
       }
@@ -665,7 +704,7 @@ function Invoke-FixMode {
   if ($cacheFindings.Count -gt 0) {
     $cacheTool = Join-Path $PSScriptRoot "tools\migrate-shared-caches.bat"
     if ($script:isAdmin) {
-      $reply = Read-Host "  Run the cache consolidation (npm / uv / pip) now? [Y/n]"
+      $reply = Read-HostOrDefault "  Run the cache consolidation (npm / uv / pip) now? [Y/n]" "Y"
       if ($reply -ne "n" -and $reply -ne "N") {
         & $cacheTool
       }
@@ -797,6 +836,14 @@ if ($script:pcType -eq "FullDev" -and -not $script:isAdmin) {
   Write-Host "  shared folder ACLs, both of which need admin. Without admin we'll fall" -ForegroundColor Yellow
   Write-Host "  back to User scope and skip cross-account ACLs (your settings still work" -ForegroundColor Yellow
   Write-Host "  for THIS account; other accounts won't pick them up until an admin run)." -ForegroundColor Yellow
+}
+
+# Doctor mode: read-only audit, no apply prompts, no install.
+if ($script:doctorMode) {
+  try { Invoke-FixMode -ReadOnly } finally { Stop-Transcript | Out-Null }
+  Write-Host ""
+  Read-Host "  Press Enter to close"
+  exit 0
 }
 
 # Fix-only mode: audit and exit, no PHASE 1 scan / install / clone.
