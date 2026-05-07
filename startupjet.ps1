@@ -1056,9 +1056,15 @@ if ($authTailscale) {
 
 if ($authCloudflare) {
   if (Test-Command "cloudflared") {
-    Write-Host "  Running cloudflared tunnel login..."
-    cloudflared tunnel login
-    $script:summary.authenticated += "cloudflared"
+    $cfCert = Join-Path $env:USERPROFILE ".cloudflared\cert.pem"
+    if (Test-Path $cfCert) {
+      Write-Host "  [skip] cloudflared cert already exists at $cfCert (delete it to re-login)" -ForegroundColor Yellow
+      $script:summary.authenticated += "cloudflared (existing cert)"
+    } else {
+      Write-Host "  Running cloudflared tunnel login..."
+      cloudflared tunnel login
+      $script:summary.authenticated += "cloudflared"
+    }
   } else {
     Write-Host "  [defer] cloudflared not installed yet, will auth after install" -ForegroundColor Yellow
   }
@@ -1356,10 +1362,16 @@ if ($toInstall.Count -eq 0) {
     tailscale up
     $script:summary.authenticated += "Tailscale"
   }
-  if ($authCloudflare -and (Test-Command "cloudflared") -and ($script:summary.authenticated -notcontains "cloudflared")) {
-    Write-Host "  Running deferred cloudflared tunnel login..."
-    cloudflared tunnel login
-    $script:summary.authenticated += "cloudflared"
+  if ($authCloudflare -and (Test-Command "cloudflared") -and ($script:summary.authenticated -notcontains "cloudflared") -and ($script:summary.authenticated -notcontains "cloudflared (existing cert)")) {
+    $cfCert = Join-Path $env:USERPROFILE ".cloudflared\cert.pem"
+    if (Test-Path $cfCert) {
+      Write-Host "  [skip] cloudflared cert already exists at $cfCert (delete it to re-login)" -ForegroundColor Yellow
+      $script:summary.authenticated += "cloudflared (existing cert)"
+    } else {
+      Write-Host "  Running deferred cloudflared tunnel login..."
+      cloudflared tunnel login
+      $script:summary.authenticated += "cloudflared"
+    }
   }
 
   # 5f: deferred git config (if git was just installed)

@@ -449,8 +449,12 @@ phase3_auth() {
   fi
 
   if $INSTALL_AUTH_CF && command -v cloudflared &>/dev/null; then
-    info "Launching Cloudflare login..."
-    if ! $DRY_RUN; then
+    local cf_cert="${HOME}/.cloudflared/cert.pem"
+    if [[ -f "$cf_cert" ]]; then
+      info "[skip] cloudflared cert already exists at $cf_cert (delete it to re-login)"
+      SUMMARY_AUTH+=("cloudflared (existing cert)")
+    elif ! $DRY_RUN; then
+      info "Launching Cloudflare login..."
       if cloudflared tunnel login; then
         SUMMARY_AUTH+=("cloudflared")
       else
