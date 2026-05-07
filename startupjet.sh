@@ -209,15 +209,15 @@ phase2_choose() {
   echo "  [A] Minimal dev    - Git, GitHub CLI, Python, Node, pwsh, OpenSSH"
   echo "  [B] Developer      - A + VS Code, Tailscale, cloudflared, dev settings"
   echo "  [C] Full setup     - B + Claude Code, OpenAI Codex, all but local LLMs"
-  echo "  [D] AI workstation - C + Ollama, uv, recommended models"
+  echo "  [D] AI workstation - C + Ollama, recommended models"
   echo "  [E] Custom         - Pick everything yourself"
   echo ""
   read -rp "Choose a preset [A/B/C/D/E]: " preset_choice
 
   local dev_ids=(1 2 3 4 5 6 7)
   local net_ids=(8 9)
-  local ai_ids=(10 11)
-  local local_ai_ids=(12 13)
+  local ai_ids=(10 11 13)
+  local local_ai_ids=(12)
 
   case "${preset_choice^^}" in
     A)

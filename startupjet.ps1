@@ -524,7 +524,7 @@ if ($notInstalled.Count -eq 0) {
   Write-Host "    [B] Developer      (A + VS Code, Tailscale, cloudflared, dev settings)" -ForegroundColor Cyan
   Write-Host "    [C] Full setup     (B + Claude Code, OpenAI Codex, all but local LLMs)" -ForegroundColor Cyan
   if ($script:localAiCapable) {
-    Write-Host "    [D] AI workstation (C + Ollama, uv, recommended models)" -ForegroundColor Cyan
+    Write-Host "    [D] AI workstation (C + Ollama, recommended models)" -ForegroundColor Cyan
   }
   Write-Host "    [E] Custom         (choose everything yourself)" -ForegroundColor Cyan
   Write-Host ""
@@ -565,7 +565,7 @@ if ($notInstalled.Count -eq 0) {
       Write-Host "  Profile: Developer" -ForegroundColor Green
     }
     "C" {
-      $presetNames = @("Git", "GitHub CLI", "Python 3", "PowerShell 7", "OpenSSH", "Node.js", "VS Code", "Tailscale", "cloudflared", "Claude Code", "OpenAI Codex")
+      $presetNames = @("Git", "GitHub CLI", "Python 3", "PowerShell 7", "OpenSSH", "Node.js", "VS Code", "Tailscale", "cloudflared", "Claude Code", "OpenAI Codex", "uv")
       foreach ($item in $notInstalled) {
         if ($presetNames -contains $item.name) { $item.selected = $true }
       }
