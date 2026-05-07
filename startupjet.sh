@@ -433,6 +433,9 @@ phase3_auth() {
       else
         info "Logging out and re-authenticating..."
         gh auth logout --hostname github.com 2>/dev/null || true
+        echo ""
+        info "Need a token? Generate one at: https://github.com/settings/tokens"
+        info "Required scopes: repo, read:org, workflow"
         if ! $DRY_RUN; then
           gh auth login && SUMMARY_AUTH+=("GitHub (gh)")
         else
@@ -440,6 +443,9 @@ phase3_auth() {
         fi
       fi
     else
+      echo ""
+      info "Need a token? Generate one at: https://github.com/settings/tokens"
+      info "Required scopes: repo, read:org, workflow"
       info "Launching GitHub CLI login..."
       if ! $DRY_RUN; then
         gh auth login && SUMMARY_AUTH+=("GitHub (gh)")
@@ -448,6 +454,7 @@ phase3_auth() {
       fi
     fi
   elif $INSTALL_AUTH_GH; then
+    info "Token URL: https://github.com/settings/tokens (scopes: repo, read:org, workflow)"
     warn "GitHub CLI not installed yet, will auth after install"
   fi
 

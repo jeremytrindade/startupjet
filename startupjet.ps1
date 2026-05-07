@@ -109,6 +109,9 @@ function Invoke-GhAuth {
     Write-Host "  Logging out and re-authenticating..." -ForegroundColor Yellow
     gh auth logout --hostname github.com 2>&1 | Out-Null
   }
+  Write-Host ""
+  Write-Host "  Need a token? Generate one at: https://github.com/settings/tokens" -ForegroundColor Cyan
+  Write-Host "  Required scopes: repo, read:org, workflow" -ForegroundColor DarkGray
   Write-Host "  Running gh auth login..."
   gh auth login
   $script:summary.authenticated += "GitHub (gh)"
@@ -972,10 +975,12 @@ if (Test-Command "gh") {
     Write-Host "  [OK] GitHub CLI already authenticated (will confirm in PHASE 3)" -ForegroundColor Green
     $authGh = $true
   } else {
+    Write-Host "  Token URL: https://github.com/settings/tokens (scopes: repo, read:org, workflow)" -ForegroundColor DarkCyan
     $reply = Read-Host "  Authenticate GitHub CLI? [Y/n]"
     $authGh = ($reply -ne "n" -and $reply -ne "N")
   }
 } else {
+  Write-Host "  Token URL: https://github.com/settings/tokens (scopes: repo, read:org, workflow)" -ForegroundColor DarkCyan
   Write-Host "  [skip] gh not installed yet (will auth after install if selected)" -ForegroundColor Yellow
   $ghSelected = $catalog | Where-Object { $_.name -eq "GitHub CLI" -and $_.selected }
   if ($ghSelected) { $authGh = $true }
