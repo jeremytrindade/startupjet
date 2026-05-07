@@ -208,11 +208,12 @@ phase2_choose() {
   echo ""
   echo "  [A] Minimal dev    - Git, GitHub CLI, Python, Node, pwsh, OpenSSH"
   echo "  [B] Developer      - A + VS Code, Tailscale, cloudflared, dev settings"
-  echo "  [C] Full setup     - B + Claude Code, OpenAI Codex, all but local LLMs"
-  echo "  [D] AI workstation - C + Ollama, recommended models"
-  echo "  [E] Custom         - Pick everything yourself"
+  echo "  [C] Full setup     - B + Claude Code, OpenAI Codex, uv, all but local LLMs"
+  echo "  [D] Full + Ollama  - C + Ollama installed, no models preloaded"
+  echo "  [E] AI workstation - D + recommended models auto-pulled"
+  echo "  [F] Custom         - Pick everything yourself"
   echo ""
-  read -rp "Choose a preset [A/B/C/D/E]: " preset_choice
+  read -rp "Choose a preset [A/B/C/D/E/F]: " preset_choice
 
   local dev_ids=(1 2 3 4 5 6 7)
   local net_ids=(8 9)
@@ -249,9 +250,17 @@ phase2_choose() {
       INSTALL_AUTH_CF=true
       GENERATE_SSH=true
       INSTALL_EXTENSIONS=true
-      select_recommended_models
       ;;
     E)
+      SELECTED_TOOLS=("${dev_ids[@]}" "${net_ids[@]}" "${ai_ids[@]}" "${local_ai_ids[@]}")
+      INSTALL_AUTH_GH=true
+      INSTALL_AUTH_TS=true
+      INSTALL_AUTH_CF=true
+      GENERATE_SSH=true
+      INSTALL_EXTENSIONS=true
+      select_recommended_models
+      ;;
+    F)
       custom_choose
       return
       ;;

@@ -522,13 +522,14 @@ if ($notInstalled.Count -eq 0) {
   Write-Host ""
   Write-Host "    [A] Minimal dev    (Git, gh, Python, Node, pwsh, OpenSSH)" -ForegroundColor Cyan
   Write-Host "    [B] Developer      (A + VS Code, Tailscale, cloudflared, dev settings)" -ForegroundColor Cyan
-  Write-Host "    [C] Full setup     (B + Claude Code, OpenAI Codex, all but local LLMs)" -ForegroundColor Cyan
+  Write-Host "    [C] Full setup     (B + Claude Code, OpenAI Codex, uv, all but local LLMs)" -ForegroundColor Cyan
+  Write-Host "    [D] Full + Ollama  (C + Ollama installed, no models preloaded)" -ForegroundColor Cyan
   if ($script:localAiCapable) {
-    Write-Host "    [D] AI workstation (C + Ollama, recommended models)" -ForegroundColor Cyan
+    Write-Host "    [E] AI workstation (D + recommended models auto-pulled)" -ForegroundColor Cyan
   }
-  Write-Host "    [E] Custom         (choose everything yourself)" -ForegroundColor Cyan
+  Write-Host "    [F] Custom         (choose everything yourself)" -ForegroundColor Cyan
   Write-Host ""
-  $presetChoice = Read-Host "  Profile [A/B/C/D/E]"
+  $presetChoice = Read-Host "  Profile [A/B/C/D/E/F]"
 
   $presetCategories = @()
   switch ($presetChoice.ToUpper()) {
@@ -583,9 +584,27 @@ if ($notInstalled.Count -eq 0) {
       Write-Host "  Profile: Full setup" -ForegroundColor Green
     }
     "D" {
+      $presetNames = @("Git", "GitHub CLI", "Python 3", "PowerShell 7", "OpenSSH", "Node.js", "VS Code", "Tailscale", "cloudflared", "Claude Code", "OpenAI Codex", "Ollama", "uv")
+      foreach ($item in $notInstalled) {
+        if ($presetNames -contains $item.name) { $item.selected = $true }
+      }
+      $script:installScope = "user"
+      $authGh = $true; $authTailscale = $true; $authCloudflare = $true
+      $sshKeyPath = Join-Path $env:USERPROFILE ".ssh\id_ed25519"
+      $generateSshKey = -not (Test-Path $sshKeyPath)
+      $applyDevSettings = $true
+      $installExtensions = $false; $extList = @()
+      $extConfigPath = Join-Path $PSScriptRoot "config\vscode-extensions.json"
+      if (Test-Path $extConfigPath) {
+        try { $extData = Get-Content $extConfigPath -Raw | ConvertFrom-Json; $extList = @($extData.extensions); $installExtensions = $extList.Count -gt 0 } catch {}
+      }
+      $script:presetApplied = $true
+      Write-Host "  Profile: Full + Ollama" -ForegroundColor Green
+    }
+    "E" {
       if (-not $script:localAiCapable) {
-        Write-Host "  AI workstation not available (hardware scan showed local AI not supported). Using Full setup." -ForegroundColor Yellow
-        $presetChoice = "C"
+        Write-Host "  AI workstation not available (hardware scan showed local AI not supported). Using Full + Ollama." -ForegroundColor Yellow
+        $presetChoice = "D"
       }
       $presetNames = @("Git", "GitHub CLI", "Python 3", "PowerShell 7", "OpenSSH", "Node.js", "VS Code", "Tailscale", "cloudflared", "Claude Code", "OpenAI Codex", "Ollama", "uv")
       foreach ($item in $notInstalled) {
