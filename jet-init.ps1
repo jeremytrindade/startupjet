@@ -2486,5 +2486,8 @@ if ($script:summary.failed.Count -eq 0) {
 }
 
 } finally {
-  Stop-Transcript -ErrorAction SilentlyContinue | Out-Null
+  # Stop-Transcript can throw if the doctor / fix branch already stopped it
+  # before exit. -ErrorAction SilentlyContinue does not always suppress that
+  # particular error, so swallow it explicitly.
+  try { Stop-Transcript -ErrorAction SilentlyContinue | Out-Null } catch { }
 }
