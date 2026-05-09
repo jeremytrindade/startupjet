@@ -1,7 +1,7 @@
 {
-  "_about": "Default values for jet-init prompts. Edit these for your own setup. workspacePath is for Windows, workspacePathUnix is for macOS/Linux (~ expands to home).",
-  "workspacePath": "D:\\aijetlabs",
+  "_about": "Default values for jet-init prompts. Edit these for your own setup. workspacePath is for Windows, workspacePathUnix is for macOS/Linux (~ expands to home). The placeholders below are templates — replace them with your own values before running, or you'll be prompted at runtime.",
+  "workspacePath": "C:\\workspace",
   "workspacePathUnix": "~/workspace",
-  "githubUser": "jeremytrindade",
-  "gitEmail": "jeremytrindade@gmail.com"
+  "githubUser": "your-github-user",
+  "gitEmail": "your.email@example.com"
 }

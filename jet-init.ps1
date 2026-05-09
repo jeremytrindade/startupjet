@@ -1415,7 +1415,7 @@ if ($notInstalled.Count -eq 0) {
   if ($script:presetApplied) {
     # Load workspace defaults
     $defaultsPath = Join-Path $PSScriptRoot "config\defaults.json"
-    $workspacePath = "D:\aijetlabs"; $githubUser = "jeremytrindade"; $gitEmail = "jeremytrindade@gmail.com"
+    $workspacePath = "C:\workspace"; $githubUser = "your-github-user"; $gitEmail = "your.email@example.com"
     if (Test-Path $defaultsPath) {
       try {
         $defs = Get-Content $defaultsPath -Raw | ConvertFrom-Json
@@ -1731,9 +1731,9 @@ Write-Host ""
 Write-Host "  Workspace configuration:" -ForegroundColor White
 
 # Load defaults from config/defaults.json if available
-$defaultWorkspace = "D:\aijetlabs"
-$defaultGithubUser = "jeremytrindade"
-$defaultGitEmail = "jeremytrindade@gmail.com"
+$defaultWorkspace = "C:\workspace"
+$defaultGithubUser = "your-github-user"
+$defaultGitEmail = "your.email@example.com"
 $defaultsPath = Join-Path $PSScriptRoot "config\defaults.json"
 if (Test-Path $defaultsPath) {
   try {
