@@ -1,14 +1,15 @@
 {
-  "_about": "List of repos to clone during phase 6. Set required=true to fail if 404. Set shallow=true for --depth 1 clone (faster, saves disk).",
+  "_about": "List of repos to clone during phase 6. Set required=true to fail if 404. Set shallow=true for --depth 1 clone (faster, saves disk). Private repos require gh auth on the running machine.",
   "repos": [
-    { "owner": "jeremytrindade", "name": "jet-rules",                     "required": true,  "shallow": false, "description": "universal dev rules (open-source layer)" },
-    { "owner": "jeremytrindade", "name": "jet-playbook",                  "required": true,  "shallow": false, "description": "personal rules, procedures, scripts (extended layer)" },
-    { "owner": "jeremytrindade", "name": "ai-journal",                   "required": true,  "shallow": false, "description": "cross-AI cross-machine journal" },
-    { "owner": "jeremytrindade", "name": "rpi5-usages",                  "required": false, "shallow": true,  "description": "RPi5 community usage research" },
-    { "owner": "jeremytrindade", "name": "labs-migration-gcp-to-rpi",    "required": false, "shallow": true,  "description": "labs migration runbook (private)" },
-    { "owner": "jeremytrindade", "name": "machines-cheatsheet",          "required": false, "shallow": true,  "description": "PowerShell cheatsheet for SSH" },
-    { "owner": "jeremytrindade", "name": "remote-claude-code",           "required": false, "shallow": true,  "description": "PowerShell remote via Cloudflare Tunnel" },
-    { "owner": "ruvnet",          "name": "ruflo",                       "required": false, "shallow": true,  "description": "ruflo by ruvnet" },
-    { "owner": "AgriciDaniel",    "name": "claude-seo",                  "required": false, "shallow": true,  "description": "Claude SEO by AgriciDaniel" }
+    { "owner": "jeremytrindade", "name": "jet-rules",                     "required": true,  "shallow": false, "description": "universal dev rules (Layer 1, public)" },
+    { "owner": "jeremytrindade", "name": "jet-rules-private",             "required": false, "shallow": false, "description": "operator-personal extended rules (Layer 2, private — pointed at by jet-rules/config.json; only clones if gh auth succeeds)" },
+    { "owner": "jeremytrindade", "name": "jet-playbook",                  "required": false, "shallow": false, "description": "cross-repo conventions, RULES.md (numbered cross-project rules), stories, infra patterns" },
+    { "owner": "jeremytrindade", "name": "jet-aij",                       "required": true,  "shallow": false, "description": "cross-AI cross-machine journal (formerly ai-journal)" },
+    { "owner": "jeremytrindade", "name": "rpi5-usages",                   "required": false, "shallow": true,  "description": "RPi5 community usage research (sanitized 2026-05-09)" },
+    { "owner": "jeremytrindade", "name": "labs-migration-gcp-to-rpi",     "required": false, "shallow": true,  "description": "labs migration runbook (private)" },
+    { "owner": "jeremytrindade", "name": "machines-cheatsheet",           "required": false, "shallow": true,  "description": "PowerShell cheatsheet for SSH" },
+    { "owner": "jeremytrindade", "name": "remote-claude-code",            "required": false, "shallow": true,  "description": "PowerShell remote via Cloudflare Tunnel" },
+    { "owner": "ruvnet",          "name": "ruflo",                        "required": false, "shallow": true,  "description": "ruflo by ruvnet" },
+    { "owner": "AgriciDaniel",    "name": "claude-seo",                   "required": false, "shallow": true,  "description": "Claude SEO by AgriciDaniel" }
   ]
 }
